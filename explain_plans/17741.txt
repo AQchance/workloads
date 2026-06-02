@@ -1,0 +1,21 @@
+-- Query: 17741
+-- Execution time: .106348989s
+
+id	estRows	task	access object	operator info
+Projection_16	10.00	root		tpch_sf40.customer.c_name, Column#34
+└─TopN_19	10.00	root		Column#34:desc, offset:0, count:10
+  └─HashAgg_26	6000000.00	root		group by:Column#42, funcs:sum(Column#41)->Column#34, funcs:firstrow(Column#42)->tpch_sf40.customer.c_name
+    └─Projection_160	36998443.31	root		mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#41, tpch_sf40.customer.c_name->Column#42
+      └─IndexHashJoin_39	36998443.31	root		inner join, inner:TableReader_34, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+        ├─TableReader_107(Build)	9184457.40	root		MppVersion: 2, data:ExchangeSender_106
+        │ └─ExchangeSender_106	9184457.40	mpp[tiflash]		ExchangeType: PassThrough
+        │   └─Projection_105	9184457.40	mpp[tiflash]		tpch_sf40.customer.c_name, tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_custkey
+        │     └─HashJoin_78	9184457.40	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+        │       ├─ExchangeReceiver_47(Build)	6000000.00	mpp[tiflash]		stream_count: 2
+        │       │ └─ExchangeSender_46	6000000.00	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+        │       │   └─TableFullScan_45	6000000.00	mpp[tiflash]	table:c	keep order:false
+        │       └─ExchangeReceiver_51(Probe)	9184457.40	mpp[tiflash]		
+        │         └─ExchangeSender_50	9184457.40	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+        │           └─TableFullScan_48	9184457.40	mpp[tiflash]	table:o	pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1997-01-01 00:00:00.000000), lt(tpch_sf40.orders.o_orderdate, 1998-01-01 00:00:00.000000), keep order:false
+        └─TableReader_34(Probe)	9184457.40	root		data:TableRangeScan_33
+          └─TableRangeScan_33	9184457.40	cop[tikv]	table:l	range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false

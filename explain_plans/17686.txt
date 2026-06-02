@@ -1,0 +1,24 @@
+-- Query: 17686
+-- Execution time: .105152492s
+
+id	estRows	task	access object	operator info
+Projection_16	10.00	root		tpch_sf40.part.p_name, tpch_sf40.supplier.s_name, tpch_sf40.partsupp.ps_availqty, tpch_sf40.partsupp.ps_supplycost
+└─TopN_20	10.00	root		tpch_sf40.partsupp.ps_supplycost:desc, offset:0, count:10
+  └─TableReader_134	10.00	root		MppVersion: 2, data:ExchangeSender_133
+    └─ExchangeSender_133	10.00	mpp[tiflash]		ExchangeType: PassThrough
+      └─TopN_132	10.00	mpp[tiflash]		tpch_sf40.partsupp.ps_supplycost:desc, offset:0, count:10
+        └─Projection_131	31916381.15	mpp[tiflash]		tpch_sf40.part.p_name, tpch_sf40.partsupp.ps_availqty, tpch_sf40.partsupp.ps_supplycost, tpch_sf40.supplier.s_name
+          └─Projection_128	31916381.15	mpp[tiflash]		tpch_sf40.supplier.s_name, tpch_sf40.partsupp.ps_availqty, tpch_sf40.partsupp.ps_supplycost, tpch_sf40.part.p_name, tpch_sf40.partsupp.ps_partkey
+            └─HashJoin_127	31916381.15	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.partsupp.ps_partkey, tpch_sf40.part.p_partkey)], stream_count: 2
+              ├─ExchangeReceiver_52(Build)	8000000.00	mpp[tiflash]		stream_count: 2
+              │ └─ExchangeSender_51	8000000.00	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_partkey, collate: binary], stream_count: 2
+              │   └─TableFullScan_50	8000000.00	mpp[tiflash]	table:p	keep order:false
+              └─ExchangeReceiver_49(Probe)	31775438.41	mpp[tiflash]		
+                └─ExchangeSender_48	31775438.41	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.partsupp.ps_partkey, collate: binary]
+                  └─Projection_47	31775438.41	mpp[tiflash]		tpch_sf40.supplier.s_name, tpch_sf40.partsupp.ps_partkey, tpch_sf40.partsupp.ps_availqty, tpch_sf40.partsupp.ps_supplycost
+                    └─HashJoin_41	31775438.41	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_suppkey)]
+                      ├─ExchangeReceiver_44(Build)	400000.00	mpp[tiflash]		
+                      │ └─ExchangeSender_43	400000.00	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+                      │   └─TableFullScan_42	400000.00	mpp[tiflash]	table:s	keep order:false
+                      └─Selection_46(Probe)	31678841.08	mpp[tiflash]		gt(tpch_sf40.partsupp.ps_availqty, 100)
+                        └─TableFullScan_45	32000000.00	mpp[tiflash]	table:ps	pushed down filter:empty, keep order:false

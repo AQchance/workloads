@@ -1,0 +1,36 @@
+-- Query: 6466
+-- Execution time: .105830958s
+
+id	estRows	task	access object	operator info
+Sort_74	1927197.86	root		Column#130:desc, Column#149:desc
+└─Projection_77	1927197.86	root		tpch_sf40.customer.c_name, Column#130, tpch_sf40.supplier.s_name, Column#149
+  └─HashJoin_78	1927197.86	root		CARTESIAN inner join, other cond:gt(Column#130, Column#149)
+    ├─Selection_226(Build)	4.00	root		not(isnull(Column#149))
+    │ └─TopN_230	5.00	root		Column#149:desc, offset:0, count:5
+    │   └─TableReader_318	5.00	root		MppVersion: 2, data:ExchangeSender_317
+    │     └─ExchangeSender_317	5.00	mpp[tiflash]		ExchangeType: PassThrough
+    │       └─TopN_316	5.00	mpp[tiflash]		Column#149:desc, offset:0, count:5
+    │         └─Projection_312	398784.00	mpp[tiflash]		Column#149, tpch_sf40.supplier.s_name
+    │           └─HashAgg_313	398784.00	mpp[tiflash]		group by:tpch_sf40.supplier.s_name, tpch_sf40.supplier.s_suppkey, funcs:sum(Column#162)->Column#149, funcs:firstrow(tpch_sf40.supplier.s_name)->tpch_sf40.supplier.s_name, stream_count: 2
+    │             └─ExchangeReceiver_315	398784.00	mpp[tiflash]		stream_count: 2
+    │               └─ExchangeSender_314	398784.00	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.supplier.s_suppkey, collate: binary], [name: tpch_sf40.supplier.s_name, collate: utf8mb4_bin], stream_count: 2
+    │                 └─HashAgg_310	398784.00	mpp[tiflash]		group by:Column#167, Column#168, funcs:sum(Column#166)->Column#162
+    │                   └─Projection_322	32097576.63	mpp[tiflash]		mul(tpch_sf40.partsupp.ps_supplycost, cast(tpch_sf40.partsupp.ps_availqty, decimal(10,0) BINARY))->Column#166, tpch_sf40.supplier.s_suppkey->Column#167, tpch_sf40.supplier.s_name->Column#168
+    │                     └─Projection_299	32097576.63	mpp[tiflash]		tpch_sf40.supplier.s_suppkey, tpch_sf40.supplier.s_name, tpch_sf40.partsupp.ps_availqty, tpch_sf40.partsupp.ps_supplycost
+    │                       └─HashJoin_298	32097576.63	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_suppkey)]
+    │                         ├─ExchangeReceiver_269(Build)	400000.00	mpp[tiflash]		
+    │                         │ └─ExchangeSender_268	400000.00	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+    │                         │   └─TableFullScan_267	400000.00	mpp[tiflash]	table:s	keep order:false
+    │                         └─TableFullScan_270(Probe)	32000000.00	mpp[tiflash]	table:ps	keep order:false
+    └─IndexJoin_87(Probe)	481799.46	root		inner join, inner:TableReader_84, outer key:tpch_sf40.orders.o_custkey, inner key:tpch_sf40.customer.c_custkey, equal cond:eq(tpch_sf40.orders.o_custkey, tpch_sf40.customer.c_custkey)
+      ├─Selection_150(Build)	481799.46	root		gt(Column#130, 100000.00), not(isnull(Column#130))
+      │ └─HashAgg_154	602249.33	root		group by:Column#165, funcs:sum(Column#164)->Column#130, funcs:firstrow(Column#165)->tpch_sf40.orders.o_custkey
+      │   └─Projection_321	37014321.89	root		mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#164, tpch_sf40.orders.o_custkey->Column#165
+      │     └─IndexHashJoin_169	37014321.89	root		inner join, inner:TableReader_164, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      │       ├─TableReader_201(Build)	9188399.08	root		MppVersion: 2, data:ExchangeSender_200
+      │       │ └─ExchangeSender_200	9188399.08	mpp[tiflash]		ExchangeType: PassThrough
+      │       │   └─TableFullScan_198	9188399.08	mpp[tiflash]	table:o	pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1997-01-01), le(tpch_sf40.orders.o_orderdate, 1997-12-31), keep order:false
+      │       └─TableReader_164(Probe)	9188399.08	root		data:TableRangeScan_163
+      │         └─TableRangeScan_163	9188399.08	cop[tikv]	table:l	range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+      └─TableReader_84(Probe)	481799.46	root		data:TableRangeScan_83
+        └─TableRangeScan_83	481799.46	cop[tikv]	table:c	range: decided by [tpch_sf40.orders.o_custkey], keep order:false

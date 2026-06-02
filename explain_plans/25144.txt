@@ -1,0 +1,33 @@
+-- Query: 25144
+-- Execution time: .106249042s
+
+id	estRows	task	access object	operator info
+Projection_136	1956.76	root		tpch_sf40.part.p_partkey, tpch_sf40.part.p_name, tpch_sf40.supplier.s_name, tpch_sf40.customer.c_name, tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_orderdate
+└─Sort_138	1956.76	root		tpch_sf40.part.p_brand, tpch_sf40.orders.o_orderdate:desc
+  └─Projection_140	1956.76	root		tpch_sf40.part.p_partkey, tpch_sf40.part.p_name, tpch_sf40.part.p_brand, tpch_sf40.supplier.s_name, tpch_sf40.customer.c_name, tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_orderdate
+    └─IndexJoin_148	1956.76	root		inner join, inner:TableReader_145, outer key:tpch_sf40.orders.o_custkey, inner key:tpch_sf40.customer.c_custkey, equal cond:eq(tpch_sf40.orders.o_custkey, tpch_sf40.customer.c_custkey)
+      ├─IndexJoin_203(Build)	1956.76	root		inner join, inner:TableReader_199, outer key:tpch_sf40.lineitem.l_orderkey, inner key:tpch_sf40.orders.o_orderkey, equal cond:eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)
+      │ ├─IndexHashJoin_224(Build)	1943.08	root		inner join, inner:IndexReader_221, outer key:tpch_sf40.partsupp.ps_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.partsupp.ps_partkey, tpch_sf40.lineitem.l_partkey)
+      │ │ ├─HashJoin_236(Build)	64.48	root		inner join, equal:[eq(tpch_sf40.partsupp.ps_partkey, tpch_sf40.part.p_partkey)]
+      │ │ │ ├─IndexHashJoin_247(Build)	64.20	root		inner join, inner:IndexReader_244, outer key:tpch_sf40.supplier.s_suppkey, inner key:tpch_sf40.partsupp.ps_suppkey, equal cond:eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_suppkey)
+      │ │ │ │ ├─TableReader_280(Build)	0.80	root		MppVersion: 2, data:ExchangeSender_279
+      │ │ │ │ │ └─ExchangeSender_279	0.80	mpp[tiflash]		ExchangeType: PassThrough
+      │ │ │ │ │   └─Selection_278	0.80	mpp[tiflash]		like(tpch_sf40.supplier.s_comment, "%reliable%", 92)
+      │ │ │ │ │     └─TableFullScan_277	1.00	mpp[tiflash]	table:s	pushed down filter:gt(tpch_sf40.supplier.s_acctbal, 50000), keep order:false
+      │ │ │ │ └─IndexReader_244(Probe)	64.20	root		index:IndexRangeScan_243
+      │ │ │ │   └─IndexRangeScan_243	64.20	cop[tikv]	table:ps, index:idx_partsupp_fk1(ps_suppkey)	range: decided by [eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)], keep order:false
+      │ │ │ └─TableReader_306(Probe)	2133333.33	root		MppVersion: 2, data:ExchangeSender_305
+      │ │ │   └─ExchangeSender_305	2133333.33	mpp[tiflash]		ExchangeType: PassThrough
+      │ │ │     └─Selection_291	2133333.33	mpp[tiflash]		le(Column#90, 3), stream_count: 2
+      │ │ │       └─Window_168	2666666.67	mpp[tiflash]		rank()->Column#90 over(partition by tpch_sf40.part.p_brand order by tpch_sf40.part.p_retailprice desc), stream_count: 2
+      │ │ │         └─Sort_173	2666666.67	mpp[tiflash]		tpch_sf40.part.p_brand, tpch_sf40.part.p_retailprice:desc, stream_count: 2
+      │ │ │           └─ExchangeReceiver_172	2666666.67	mpp[tiflash]		stream_count: 2
+      │ │ │             └─ExchangeSender_171	2666666.67	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], stream_count: 2
+      │ │ │               └─TableFullScan_169	2666666.67	mpp[tiflash]	table:p	pushed down filter:gt(tpch_sf40.part.p_retailprice, 1499.495035), keep order:false, stats:partial[p_retailprice:unInitialized, ID 69:unInitialized]
+      │ │ └─IndexReader_221(Probe)	1943.08	root		index:IndexRangeScan_220
+      │ │   └─IndexRangeScan_220	1943.08	cop[tikv]	table:li, index:idx_lineitem_fk2(l_partkey, l_suppkey)	range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.partsupp.ps_partkey)], keep order:false
+      │ └─TableReader_199(Probe)	144.89	root		data:Selection_198
+      │   └─Selection_198	144.89	cop[tikv]		eq(tpch_sf40.orders.o_orderstatus, "F"), ge(tpch_sf40.orders.o_orderdate, 1997-01-01 00:00:00.000000), le(tpch_sf40.orders.o_orderdate, 1997-12-31 00:00:00.000000)
+      │     └─TableRangeScan_197	1943.08	cop[tikv]	table:o	range: decided by [tpch_sf40.lineitem.l_orderkey], keep order:false
+      └─TableReader_145(Probe)	1956.76	root		data:TableRangeScan_144
+        └─TableRangeScan_144	1956.76	cop[tikv]	table:c	range: decided by [tpch_sf40.orders.o_custkey], keep order:false

@@ -1,0 +1,904 @@
+--- Line 1 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 29 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.46 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.46 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.46 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.46 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.46 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.46 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.46 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.46 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.46 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 17535900.53 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 17535900.53 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 21919875.67 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 21919875.67 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 21919875.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-05-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 2 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 7 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 4192019.33 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 5240024.17 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 5240024.17 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 5240024.17 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-07-01), keep order:false
+      └─TableReader_25(Probe) | 4192019.33 | root |  | data:Selection_24
+        └─Selection_24 | 4192019.33 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 5240024.17 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 3 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 28 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.41 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.41 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.41 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.41 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.41 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.41 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.41 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.41 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.41 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 16942307.02 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 16942307.02 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 21177883.78 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 21177883.78 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 21177883.78 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-04-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 4 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 12 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 7212880.09 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 9016100.11 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 9016100.11 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 9016100.11 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-12-01), keep order:false
+      └─TableReader_25(Probe) | 7212880.09 | root |  | data:Selection_24
+        └─Selection_24 | 7212880.09 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 9016100.11 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 5 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 22 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.11 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.11 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.11 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 13305415.73 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 16631769.67 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 16631769.67 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 16631769.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-10-01), keep order:false
+      └─TableReader_25(Probe) | 13305415.73 | root |  | data:Selection_24
+        └─Selection_24 | 13305415.73 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 16631769.67 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 6 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 4 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 2406485.60 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 3008107.00 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 3008107.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 3008107.00 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-04-01), keep order:false
+      └─TableReader_25(Probe) | 2406485.60 | root |  | data:Selection_24
+        └─Selection_24 | 2406485.60 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 3008107.00 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 7 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 30 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.51 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.51 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.51 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.51 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.51 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.51 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.51 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.51 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.51 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 18142359.47 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 18142359.47 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 22677949.33 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 22677949.33 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 22677949.33 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-06-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 8 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 23 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.16 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.16 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.16 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 13926393.33 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 17407991.67 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 17407991.67 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 17407991.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-11-01), keep order:false
+      └─TableReader_25(Probe) | 13926393.33 | root |  | data:Selection_24
+        └─Selection_24 | 13926393.33 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 17407991.67 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 9 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 35 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.61 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.61 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.61 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.61 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.61 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.61 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.61 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.61 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.61 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 19379533.33 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 19379533.33 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 24224416.67 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 24224416.67 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 24224416.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-11-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 10 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 16 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 9644654.13 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 12055817.67 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 12055817.67 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 12055817.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-04-01), keep order:false
+      └─TableReader_25(Probe) | 9644654.13 | root |  | data:Selection_24
+        └─Selection_24 | 9644654.13 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 12055817.67 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 11 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 16 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 9644654.13 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 12055817.67 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 12055817.67 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 12055817.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-04-01), keep order:false
+      └─TableReader_25(Probe) | 9644654.13 | root |  | data:Selection_24
+        └─Selection_24 | 9644654.13 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 12055817.67 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 12 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 26 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.31 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.31 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.31 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 15767834.93 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 19709793.67 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 19709793.67 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 19709793.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-02-01), keep order:false
+      └─TableReader_25(Probe) | 15767834.93 | root |  | data:Selection_24
+        └─Selection_24 | 15767834.93 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 19709793.67 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 13 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 6 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 3608437.69 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 4510547.11 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 4510547.11 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 4510547.11 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-06-01), keep order:false
+      └─TableReader_25(Probe) | 3608437.69 | root |  | data:Selection_24
+        └─Selection_24 | 3608437.69 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 4510547.11 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 14 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 24 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.21 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.21 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.21 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 14536647.65 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 18170809.57 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 18170809.57 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 18170809.57 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-12-01), keep order:false
+      └─TableReader_25(Probe) | 14536647.65 | root |  | data:Selection_24
+        └─Selection_24 | 14536647.65 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 18170809.57 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 15 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 18 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 10884021.60 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 13605027.00 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 13605027.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 13605027.00 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-06-01), keep order:false
+      └─TableReader_25(Probe) | 10884021.60 | root |  | data:Selection_24
+        └─Selection_24 | 10884021.60 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 13605027.00 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 16 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 25 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.26 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.26 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.26 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 15146565.16 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 18933206.44 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 18933206.44 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 18933206.44 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-01-01), keep order:false
+      └─TableReader_25(Probe) | 15146565.16 | root |  | data:Selection_24
+        └─Selection_24 | 15146565.16 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 18933206.44 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 17 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 6 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 3608437.69 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 4510547.11 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 4510547.11 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 4510547.11 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-06-01), keep order:false
+      └─TableReader_25(Probe) | 3608437.69 | root |  | data:Selection_24
+        └─Selection_24 | 3608437.69 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 4510547.11 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 18 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 19 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 11481512.09 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 14351890.11 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 14351890.11 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 14351890.11 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-07-01), keep order:false
+      └─TableReader_25(Probe) | 11481512.09 | root |  | data:Selection_24
+        └─Selection_24 | 11481512.09 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 14351890.11 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 19 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 24 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.21 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.21 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.21 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 14536647.65 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 18170809.57 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 18170809.57 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 18170809.57 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-12-01), keep order:false
+      └─TableReader_25(Probe) | 14536647.65 | root |  | data:Selection_24
+        └─Selection_24 | 14536647.65 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 18170809.57 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 20 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 29 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.46 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.46 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.46 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.46 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.46 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.46 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.46 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.46 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.46 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 17535900.53 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 17535900.53 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 21919875.67 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 21919875.67 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 21919875.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-05-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 21 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 4 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 2406485.60 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 3008107.00 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 3008107.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 3008107.00 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-04-01), keep order:false
+      └─TableReader_25(Probe) | 2406485.60 | root |  | data:Selection_24
+        └─Selection_24 | 2406485.60 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 3008107.00 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 22 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 26 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.31 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.31 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.31 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 15767834.93 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 19709793.67 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 19709793.67 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 19709793.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-02-01), keep order:false
+      └─TableReader_25(Probe) | 15767834.93 | root |  | data:Selection_24
+        └─Selection_24 | 15767834.93 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 19709793.67 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 23 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 9 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 5376037.33 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 6720046.67 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 6720046.67 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 6720046.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-09-01), keep order:false
+      └─TableReader_25(Probe) | 5376037.33 | root |  | data:Selection_24
+        └─Selection_24 | 5376037.33 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 6720046.67 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 24 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 4 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 2406485.60 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 3008107.00 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 3008107.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 3008107.00 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-04-01), keep order:false
+      └─TableReader_25(Probe) | 2406485.60 | root |  | data:Selection_24
+        └─Selection_24 | 2406485.60 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 3008107.00 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 25 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 34 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.61 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.61 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.61 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.61 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.61 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.61 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.61 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.61 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.61 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 19379533.33 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 19379533.33 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 24224416.67 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 24224416.67 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 24224416.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-10-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 26 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 24 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.21 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.21 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.21 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 14536647.65 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 18170809.57 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 18170809.57 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 18170809.57 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-12-01), keep order:false
+      └─TableReader_25(Probe) | 14536647.65 | root |  | data:Selection_24
+        └─Selection_24 | 14536647.65 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 18170809.57 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 27 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 13 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 7830738.84 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 9788423.56 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 9788423.56 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 9788423.56 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-01-01), keep order:false
+      └─TableReader_25(Probe) | 7830738.84 | root |  | data:Selection_24
+        └─Selection_24 | 7830738.84 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 9788423.56 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 28 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 6 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 3608437.69 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 4510547.11 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 4510547.11 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 4510547.11 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-06-01), keep order:false
+      └─TableReader_25(Probe) | 3608437.69 | root |  | data:Selection_24
+        └─Selection_24 | 3608437.69 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 4510547.11 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 29 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 14 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 8451034.13 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 10563792.67 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 10563792.67 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 10563792.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-02-01), keep order:false
+      └─TableReader_25(Probe) | 8451034.13 | root |  | data:Selection_24
+        └─Selection_24 | 8451034.13 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 10563792.67 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 30 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 34 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.61 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.61 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.61 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.61 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.61 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.61 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.61 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.61 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.61 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 19379533.33 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 19379533.33 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 24224416.67 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 24224416.67 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 24224416.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-10-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 31 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 23 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.16 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.16 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.16 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 13926393.33 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 17407991.67 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 17407991.67 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 17407991.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-11-01), keep order:false
+      └─TableReader_25(Probe) | 13926393.33 | root |  | data:Selection_24
+        └─Selection_24 | 13926393.33 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 17407991.67 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 32 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 10 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 5992998.40 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 7491248.00 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 7491248.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 7491248.00 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-10-01), keep order:false
+      └─TableReader_25(Probe) | 5992998.40 | root |  | data:Selection_24
+        └─Selection_24 | 5992998.40 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 7491248.00 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 33 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 31 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.56 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.56 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.56 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.56 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.56 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.56 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.56 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.56 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.56 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 18744443.97 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 18744443.97 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 23430554.97 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 23430554.97 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 23430554.97 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-07-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 34 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 17 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 10251982.93 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 12814978.67 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 12814978.67 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 12814978.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-05-01), keep order:false
+      └─TableReader_25(Probe) | 10251982.93 | root |  | data:Selection_24
+        └─Selection_24 | 10251982.93 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 12814978.67 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 35 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 4 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 2406485.60 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 3008107.00 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 3008107.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 3008107.00 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-04-01), keep order:false
+      └─TableReader_25(Probe) | 2406485.60 | root |  | data:Selection_24
+        └─Selection_24 | 2406485.60 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 3008107.00 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 36 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 4 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 2406485.60 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 3008107.00 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 3008107.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 3008107.00 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-04-01), keep order:false
+      └─TableReader_25(Probe) | 2406485.60 | root |  | data:Selection_24
+        └─Selection_24 | 2406485.60 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 3008107.00 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 37 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 3 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 1795789.60 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 2244737.00 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 2244737.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 2244737.00 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-03-01), keep order:false
+      └─TableReader_25(Probe) | 1795789.60 | root |  | data:Selection_24
+        └─Selection_24 | 1795789.60 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 2244737.00 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 38 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 12 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 7212880.09 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 9016100.11 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 9016100.11 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 9016100.11 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-12-01), keep order:false
+      └─TableReader_25(Probe) | 7212880.09 | root |  | data:Selection_24
+        └─Selection_24 | 7212880.09 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 9016100.11 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 39 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 31 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.56 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.56 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.56 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.56 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.56 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.56 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.56 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.56 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.56 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 18744443.97 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 18744443.97 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 23430554.97 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 23430554.97 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 23430554.97 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-07-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 40 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 5 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 2993502.40 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 3741878.00 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 3741878.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 3741878.00 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-05-01), keep order:false
+      └─TableReader_25(Probe) | 2993502.40 | root |  | data:Selection_24
+        └─Selection_24 | 2993502.40 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 3741878.00 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 41 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 34 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.61 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.61 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.61 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.61 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.61 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.61 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.61 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.61 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.61 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 19379533.33 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 19379533.33 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 24224416.67 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 24224416.67 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 24224416.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-10-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 42 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 31 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.56 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.56 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.56 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.56 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.56 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.56 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.56 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.56 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.56 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 18744443.97 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 18744443.97 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 23430554.97 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 23430554.97 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 23430554.97 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-07-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 43 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 5 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 2993502.40 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 3741878.00 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 3741878.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 3741878.00 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-05-01), keep order:false
+      └─TableReader_25(Probe) | 2993502.40 | root |  | data:Selection_24
+        └─Selection_24 | 2993502.40 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 3741878.00 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 44 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 11 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 6592767.33 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 8240959.17 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 8240959.17 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 8240959.17 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-11-01), keep order:false
+      └─TableReader_25(Probe) | 6592767.33 | root |  | data:Selection_24
+        └─Selection_24 | 6592767.33 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 8240959.17 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 45 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 15 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 9010277.24 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 11262846.56 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 11262846.56 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 11262846.56 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-03-01), keep order:false
+      └─TableReader_25(Probe) | 9010277.24 | root |  | data:Selection_24
+        └─Selection_24 | 9010277.24 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 11262846.56 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 46 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 35 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.61 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.61 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.61 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.61 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.61 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.61 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.61 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.61 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.61 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 19379533.33 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 19379533.33 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 24224416.67 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 24224416.67 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 24224416.67 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-11-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 47 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 13 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 7830738.84 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 9788423.56 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 9788423.56 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 9788423.56 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1997-01-01), keep order:false
+      └─TableReader_25(Probe) | 7830738.84 | root |  | data:Selection_24
+        └─Selection_24 | 7830738.84 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 9788423.56 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 48 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 7 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.00 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.00 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 4192019.33 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 5240024.17 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 5240024.17 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 5240024.17 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1996-07-01), keep order:false
+      └─TableReader_25(Probe) | 4192019.33 | root |  | data:Selection_24
+        └─Selection_24 | 4192019.33 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 5240024.17 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+
+--- Line 49 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 28 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.41 | root |  | tpch_sf40.orders.o_orderpriority
+└─TableReader_94 | 1.41 | root |  | MppVersion: 2, data:ExchangeSender_93
+  └─ExchangeSender_93 | 1.41 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.41 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, Column#26
+      └─Projection_89 | 1.41 | mpp[tiflash] |  | Column#26, tpch_sf40.orders.o_orderpriority
+        └─HashAgg_90 | 1.41 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:sum(Column#31)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority, stream_count: 2
+          └─ExchangeReceiver_92 | 1.41 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_91 | 1.41 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderpriority, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_87 | 1.41 | mpp[tiflash] |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#31
+                └─Projection_76 | 16942307.02 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                  └─HashJoin_75 | 16942307.02 | mpp[tiflash] |  | semi join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                    ├─ExchangeReceiver_38(Build) | 21177883.78 | mpp[tiflash] |  | stream_count: 2
+                    │ └─ExchangeSender_37 | 21177883.78 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                    │   └─TableFullScan_35 | 21177883.78 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-04-01), keep order:false
+                    └─ExchangeReceiver_42(Probe) | 192009832.00 | mpp[tiflash] |  | 
+                      └─ExchangeSender_41 | 192009832.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                        └─Selection_40 | 192009832.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+                          └─TableFullScan_39 | 240012290.00 | mpp[tiflash] | table:lineitem | pushed down filter:empty, keep order:false
+
+
+--- Line 50 ---
+select o_orderpriority, count(*) as order_count from orders where o_orderdate >= date '1995-12-01' and o_orderdate < DATE '1995-12-01' + INTERVAL 25 MONTH and exists ( select * from lineitem where l_orderkey = o_orderkey and l_commitdate < l_receiptdate ) group by o_orderpriority order by o_orderpriority;
+
+Execution Plan:
+Sort_10 | 1.26 | root |  | tpch_sf40.orders.o_orderpriority
+└─Projection_12 | 1.26 | root |  | tpch_sf40.orders.o_orderpriority, Column#26
+  └─HashAgg_16 | 1.26 | root |  | group by:tpch_sf40.orders.o_orderpriority, funcs:count(1)->Column#26, funcs:firstrow(tpch_sf40.orders.o_orderpriority)->tpch_sf40.orders.o_orderpriority
+    └─IndexJoin_29 | 15146565.16 | root |  | semi join, inner:TableReader_25, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_60(Build) | 18933206.44 | root |  | MppVersion: 2, data:ExchangeSender_59
+      │ └─ExchangeSender_59 | 18933206.44 | mpp[tiflash] |  | ExchangeType: PassThrough
+      │   └─TableFullScan_57 | 18933206.44 | mpp[tiflash] | table:orders | pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1995-12-01), lt(tpch_sf40.orders.o_orderdate, 1998-01-01), keep order:false
+      └─TableReader_25(Probe) | 15146565.16 | root |  | data:Selection_24
+        └─Selection_24 | 15146565.16 | cop[tikv] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate)
+          └─TableRangeScan_23 | 18933206.44 | cop[tikv] | table:lineitem | range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+
+

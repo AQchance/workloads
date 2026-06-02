@@ -1,0 +1,1262 @@
+--- Line 1 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('REG AIR', 'RAIL', 'SHIP', 'TRUCK') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1997-08-14' and l_receiptdate < DATE '1997-08-14' + INTERVAL 4 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 19751752.70 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 19751752.70 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 19751752.70 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 19751752.70 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 19613627.38 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 19613627.38 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 19613627.38 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "REG AIR", "RAIL", "SHIP", "TRUCK"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 43076827.22 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1997-08-14), lt(tpch_sf40.lineitem.l_receiptdate, 2001-08-14), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 2 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('MAIL', 'FOB', 'TRUCK', 'REG AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1993-10-20' and l_receiptdate < DATE '1993-10-20' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_9 | 2.41 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_99 | 2.41 | root |  | MppVersion: 2, data:ExchangeSender_98
+  └─ExchangeSender_98 | 2.41 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_12 | 2.41 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_94 | 2.41 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_95 | 2.41 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_97 | 2.41 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_96 | 2.41 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_92 | 2.41 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_102 | 83206319.39 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_81 | 83206319.39 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode, tpch_sf40.lineitem.l_orderkey
+                    └─HashJoin_80 | 83206319.39 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                      ├─ExchangeReceiver_46(Build) | 60000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_45 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_44 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+                      └─ExchangeReceiver_50(Probe) | 82624452.05 | mpp[tiflash] |  | 
+                        └─ExchangeSender_49 | 82624452.05 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                          └─Selection_48 | 82624452.05 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1993-10-20), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1998-10-20), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                            └─TableFullScan_47 | 137266659.72 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "MAIL", "FOB", "TRUCK", "REG AIR"), keep order:false
+
+
+--- Line 3 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('AIR', 'MAIL', 'SHIP') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1993-09-02' and l_receiptdate < DATE '1993-09-02' + INTERVAL 3 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.10 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.10 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.10 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.10 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.10 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.10 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.10 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.10 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.10 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 37824382.43 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 37824382.43 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 37824382.43 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 37824382.43 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 37559874.00 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 37559874.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 37559874.00 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 46949842.50 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1993-09-02), in(tpch_sf40.lineitem.l_shipmode, "AIR", "MAIL", "SHIP"), lt(tpch_sf40.lineitem.l_receiptdate, 1996-09-02), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 4 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('TRUCK', 'REG AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1996-05-20' and l_receiptdate < DATE '1996-05-20' + INTERVAL 3 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 20151676.57 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 20151676.57 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 20151676.57 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 20151676.57 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 20010754.55 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 20010754.55 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 20010754.55 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1996-05-20), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1999-05-20), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 68392901.85 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "TRUCK", "REG AIR"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 5 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('RAIL', 'REG AIR', 'TRUCK') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1992-04-30' and l_receiptdate < DATE '1992-04-30' + INTERVAL 2 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 25088164.79 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 25088164.79 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 25088164.79 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 25088164.79 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 24912721.58 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 24912721.58 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 24912721.58 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "RAIL", "REG AIR", "TRUCK"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 72912206.00 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1992-04-30), lt(tpch_sf40.lineitem.l_receiptdate, 1994-04-30), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 6 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('AIR', 'TRUCK', 'REG AIR', 'RAIL') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1995-04-16' and l_receiptdate < DATE '1995-04-16' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.70 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.70 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.70 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.70 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.70 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.70 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.70 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.70 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.70 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 58741586.53 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 58741586.53 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 58741586.53 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 58741586.53 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 58330802.70 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 58330802.70 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 58330802.70 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 72913503.37 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1995-04-16), in(tpch_sf40.lineitem.l_shipmode, "AIR", "TRUCK", "REG AIR", "RAIL"), lt(tpch_sf40.lineitem.l_receiptdate, 2000-04-16), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 7 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('SHIP', 'MAIL', 'TRUCK', 'FOB') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1998-02-07' and l_receiptdate < DATE '1998-02-07' + INTERVAL 2 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 11783577.80 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 11783577.80 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 11783577.80 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 11783577.80 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 11701174.46 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 11701174.46 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 11701174.46 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "SHIP", "MAIL", "TRUCK", "FOB"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 25532667.67 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1998-02-07), lt(tpch_sf40.lineitem.l_receiptdate, 2000-02-07), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 8 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('REG AIR', 'MAIL') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1997-04-12' and l_receiptdate < DATE '1997-04-12' + INTERVAL 2 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 12645111.56 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 12645111.56 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 12645111.56 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 12645111.56 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 12556683.45 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 12556683.45 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 12556683.45 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "REG AIR", "MAIL"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 55185763.00 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1997-04-12), lt(tpch_sf40.lineitem.l_receiptdate, 1999-04-12), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 9 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('SHIP', 'MAIL', 'REG AIR', 'RAIL') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1994-04-03' and l_receiptdate < DATE '1994-04-03' + INTERVAL 6 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_9 | 2.19 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_99 | 2.19 | root |  | MppVersion: 2, data:ExchangeSender_98
+  └─ExchangeSender_98 | 2.19 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_12 | 2.19 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_94 | 2.19 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_95 | 2.19 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_97 | 2.19 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_96 | 2.19 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_92 | 2.19 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_102 | 75736683.11 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_81 | 75736683.11 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode, tpch_sf40.lineitem.l_orderkey
+                    └─HashJoin_80 | 75736683.11 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                      ├─ExchangeReceiver_46(Build) | 60000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_45 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_44 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+                      └─ExchangeReceiver_50(Probe) | 75207051.44 | mpp[tiflash] |  | 
+                        └─ExchangeSender_49 | 75207051.44 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                          └─Selection_48 | 75207051.44 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                            └─TableFullScan_47 | 94008814.29 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1994-04-03), in(tpch_sf40.lineitem.l_shipmode, "SHIP", "MAIL", "REG AIR", "RAIL"), lt(tpch_sf40.lineitem.l_receiptdate, 2000-04-03), keep order:false
+
+
+--- Line 10 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('REG AIR', 'SHIP') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1995-02-11' and l_receiptdate < DATE '1995-02-11' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 30575539.61 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 30575539.61 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 30575539.61 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 30575539.61 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 30361722.82 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 30361722.82 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 30361722.82 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1995-02-11), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 2000-02-11), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 67960131.85 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "REG AIR", "SHIP"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 11 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('REG AIR', 'MAIL') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1998-09-30' and l_receiptdate < DATE '1998-09-30' + INTERVAL 6 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─Projection_12 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+  └─HashAgg_16 | 1.00 | root |  | group by:Column#39, funcs:sum(Column#37)->Column#26, funcs:sum(Column#38)->Column#27, funcs:firstrow(Column#39)->tpch_sf40.lineitem.l_shipmode
+    └─Projection_107 | 610627.74 | root |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+      └─Projection_20 | 610627.74 | root |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+        └─IndexJoin_30 | 610627.74 | root |  | inner join, inner:TableReader_27, outer key:tpch_sf40.lineitem.l_orderkey, inner key:tpch_sf40.orders.o_orderkey, equal cond:eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)
+          ├─TableReader_69(Build) | 606357.58 | root |  | MppVersion: 2, data:ExchangeSender_68
+          │ └─ExchangeSender_68 | 606357.58 | mpp[tiflash] |  | ExchangeType: PassThrough
+          │   └─Selection_67 | 606357.58 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "REG AIR", "MAIL"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+          │     └─TableFullScan_66 | 2664900.00 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1998-09-30), lt(tpch_sf40.lineitem.l_receiptdate, 2004-09-30), keep order:false
+          └─TableReader_27(Probe) | 606357.58 | root |  | data:TableRangeScan_26
+            └─TableRangeScan_26 | 606357.58 | cop[tikv] | table:orders | range: decided by [tpch_sf40.lineitem.l_orderkey], keep order:false
+
+
+--- Line 12 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('RAIL', 'SHIP') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1998-09-08' and l_receiptdate < DATE '1998-09-08' + INTERVAL 4 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─Projection_12 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+  └─HashAgg_16 | 1.00 | root |  | group by:Column#39, funcs:sum(Column#37)->Column#26, funcs:sum(Column#38)->Column#27, funcs:firstrow(Column#39)->tpch_sf40.lineitem.l_shipmode
+    └─Projection_107 | 992207.07 | root |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+      └─Projection_20 | 992207.07 | root |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+        └─IndexJoin_30 | 992207.07 | root |  | inner join, inner:TableReader_27, outer key:tpch_sf40.lineitem.l_orderkey, inner key:tpch_sf40.orders.o_orderkey, equal cond:eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)
+          ├─TableReader_69(Build) | 985268.50 | root |  | MppVersion: 2, data:ExchangeSender_68
+          │ └─ExchangeSender_68 | 985268.50 | mpp[tiflash] |  | ExchangeType: PassThrough
+          │   └─Selection_67 | 985268.50 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "RAIL", "SHIP"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+          │     └─TableFullScan_66 | 4333656.55 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1998-09-08), lt(tpch_sf40.lineitem.l_receiptdate, 2002-09-08), keep order:false
+          └─TableReader_27(Probe) | 985268.50 | root |  | data:TableRangeScan_26
+            └─TableRangeScan_26 | 985268.50 | cop[tikv] | table:orders | range: decided by [tpch_sf40.lineitem.l_orderkey], keep order:false
+
+
+--- Line 13 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('SHIP', 'AIR', 'RAIL') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1995-04-24' and l_receiptdate < DATE '1995-04-24' + INTERVAL 6 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.27 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.27 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.27 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.27 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.27 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.27 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.27 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.27 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.27 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 43748404.09 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 43748404.09 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 43748404.09 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 43748404.09 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 43442468.59 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 43442468.59 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 43442468.59 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 54303085.73 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1995-04-24), in(tpch_sf40.lineitem.l_shipmode, "SHIP", "AIR", "RAIL"), lt(tpch_sf40.lineitem.l_receiptdate, 2001-04-24), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 14 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('REG AIR', 'RAIL', 'FOB', 'TRUCK') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1994-02-20' and l_receiptdate < DATE '1994-02-20' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_9 | 2.26 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_99 | 2.26 | root |  | MppVersion: 2, data:ExchangeSender_98
+  └─ExchangeSender_98 | 2.26 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_12 | 2.26 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_94 | 2.26 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_95 | 2.26 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_97 | 2.26 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_96 | 2.26 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_92 | 2.26 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_102 | 78013682.90 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_81 | 78013682.90 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode, tpch_sf40.lineitem.l_orderkey
+                    └─HashJoin_80 | 78013682.90 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                      ├─ExchangeReceiver_46(Build) | 60000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_45 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_44 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+                      └─ExchangeReceiver_50(Probe) | 77468128.02 | mpp[tiflash] |  | 
+                        └─ExchangeSender_49 | 77468128.02 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                          └─Selection_48 | 77468128.02 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1994-02-20), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1999-02-20), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                            └─TableFullScan_47 | 136986888.71 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "REG AIR", "RAIL", "FOB", "TRUCK"), keep order:false
+
+
+--- Line 15 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('FOB', 'MAIL') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1996-06-09' and l_receiptdate < DATE '1996-06-09' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 19843136.91 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 19843136.91 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 19843136.91 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 19843136.91 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 19704372.53 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 19704372.53 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 19704372.53 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1996-06-09), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 2001-06-09), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 68873757.86 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "FOB", "MAIL"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 16 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('RAIL', 'TRUCK') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1996-04-11' and l_receiptdate < DATE '1996-04-11' + INTERVAL 6 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 21123712.86 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 21123712.86 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 21123712.86 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 21123712.86 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 20975993.32 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 20975993.32 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 20975993.32 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1996-04-11), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 2002-04-11), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 68642071.86 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "RAIL", "TRUCK"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 17 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('REG AIR', 'FOB') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1996-05-29' and l_receiptdate < DATE '1996-05-29' + INTERVAL 3 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 19930480.44 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 19930480.44 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 19930480.44 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 19930480.44 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 19791105.26 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 19791105.26 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 19791105.26 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1996-05-29), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1999-05-29), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 68344816.85 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "REG AIR", "FOB"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 18 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('MAIL', 'AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1995-06-25' and l_receiptdate < DATE '1995-06-25' + INTERVAL 2 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 16808654.70 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 16808654.70 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 16808654.70 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 16808654.70 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 16691110.66 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 16691110.66 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 16691110.66 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1995-06-25), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1997-06-25), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 68932771.86 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "MAIL", "AIR"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 19 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('RAIL', 'AIR', 'SHIP', 'REG AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1993-11-12' and l_receiptdate < DATE '1993-11-12' + INTERVAL 2 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 33477427.06 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 33477427.06 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 33477427.06 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 33477427.06 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 33243317.18 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 33243317.18 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 33243317.18 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "RAIL", "AIR", "SHIP", "REG AIR"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 73005469.22 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1993-11-12), lt(tpch_sf40.lineitem.l_receiptdate, 1995-11-12), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 20 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('RAIL', 'AIR', 'FOB') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1998-11-01' and l_receiptdate < DATE '1998-11-01' + INTERVAL 3 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─Projection_12 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+  └─HashAgg_16 | 1.00 | root |  | group by:Column#39, funcs:sum(Column#37)->Column#26, funcs:sum(Column#38)->Column#27, funcs:firstrow(Column#39)->tpch_sf40.lineitem.l_shipmode
+    └─Projection_107 | 343677.93 | root |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+      └─Projection_20 | 343677.93 | root |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+        └─IndexJoin_30 | 343677.93 | root |  | inner join, inner:TableReader_27, outer key:tpch_sf40.lineitem.l_orderkey, inner key:tpch_sf40.orders.o_orderkey, equal cond:eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)
+          ├─TableReader_69(Build) | 341274.57 | root |  | MppVersion: 2, data:ExchangeSender_68
+          │ └─ExchangeSender_68 | 341274.57 | mpp[tiflash] |  | ExchangeType: PassThrough
+          │   └─Selection_67 | 341274.57 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "RAIL", "AIR", "FOB"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+          │     └─TableFullScan_66 | 992798.41 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1998-11-01), lt(tpch_sf40.lineitem.l_receiptdate, 2001-11-01), keep order:false
+          └─TableReader_27(Probe) | 341274.57 | root |  | data:TableRangeScan_26
+            └─TableRangeScan_26 | 341274.57 | cop[tikv] | table:orders | range: decided by [tpch_sf40.lineitem.l_orderkey], keep order:false
+
+
+--- Line 21 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('SHIP', 'TRUCK') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1995-01-21' and l_receiptdate < DATE '1995-01-21' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 31362480.20 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 31362480.20 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 31362480.20 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 31362480.20 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 31143160.28 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 31143160.28 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 31143160.28 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1995-01-21), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 2000-01-21), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 68618028.86 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "SHIP", "TRUCK"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 22 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('REG AIR', 'TRUCK', 'SHIP', 'AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1998-08-23' and l_receiptdate < DATE '1998-08-23' + INTERVAL 6 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─Projection_12 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+  └─HashAgg_16 | 1.00 | root |  | group by:Column#39, funcs:sum(Column#37)->Column#26, funcs:sum(Column#38)->Column#27, funcs:firstrow(Column#39)->tpch_sf40.lineitem.l_shipmode
+    └─Projection_109 | 2612907.48 | root |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+      └─Projection_20 | 2612907.48 | root |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+        └─IndexJoin_30 | 2612907.48 | root |  | inner join, inner:TableReader_27, outer key:tpch_sf40.lineitem.l_orderkey, inner key:tpch_sf40.orders.o_orderkey, equal cond:eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)
+          ├─TableReader_71(Build) | 2594635.25 | root |  | MppVersion: 2, data:ExchangeSender_70
+          │ └─ExchangeSender_70 | 2594635.25 | mpp[tiflash] |  | ExchangeType: PassThrough
+          │   └─Selection_69 | 2594635.25 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "REG AIR", "TRUCK", "SHIP", "AIR"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+          │     └─TableFullScan_68 | 5681067.50 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1998-08-23), lt(tpch_sf40.lineitem.l_receiptdate, 2004-08-23), keep order:false
+          └─TableReader_27(Probe) | 2594635.25 | root |  | data:TableRangeScan_26
+            └─TableRangeScan_26 | 2594635.25 | cop[tikv] | table:orders | range: decided by [tpch_sf40.lineitem.l_orderkey], keep order:false
+
+
+--- Line 23 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('REG AIR', 'RAIL', 'MAIL', 'TRUCK') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1993-06-22' and l_receiptdate < DATE '1993-06-22' + INTERVAL 4 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_9 | 1.94 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_99 | 1.94 | root |  | MppVersion: 2, data:ExchangeSender_98
+  └─ExchangeSender_98 | 1.94 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_12 | 1.94 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_94 | 1.94 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_95 | 1.94 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_97 | 1.94 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_96 | 1.94 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_92 | 1.94 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_102 | 67047301.46 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_81 | 67047301.46 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode, tpch_sf40.lineitem.l_orderkey
+                    └─HashJoin_80 | 67047301.46 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                      ├─ExchangeReceiver_46(Build) | 60000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_45 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_44 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+                      └─ExchangeReceiver_50(Probe) | 66578435.21 | mpp[tiflash] |  | 
+                        └─ExchangeSender_49 | 66578435.21 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                          └─Selection_48 | 66578435.21 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                            └─TableFullScan_47 | 83223044.01 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1993-06-22), in(tpch_sf40.lineitem.l_shipmode, "REG AIR", "RAIL", "MAIL", "TRUCK"), lt(tpch_sf40.lineitem.l_receiptdate, 1997-06-22), keep order:false
+
+
+--- Line 24 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('RAIL', 'AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1996-06-11' and l_receiptdate < DATE '1996-06-11' + INTERVAL 6 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 19735944.91 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 19735944.91 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 19735944.91 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 19735944.91 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 19597930.13 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 19597930.13 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 19597930.13 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1996-06-11), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 2002-06-11), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 68653000.86 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "RAIL", "AIR"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 25 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('MAIL', 'FOB', 'SHIP') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1993-08-12' and l_receiptdate < DATE '1993-08-12' + INTERVAL 4 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.46 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.46 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.46 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.46 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.46 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.46 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.46 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.46 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.46 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 50349344.71 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 50349344.71 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 50349344.71 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 50349344.71 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 49997248.39 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 49997248.39 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 49997248.39 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1993-08-12), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1997-08-12), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 102966387.29 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "MAIL", "FOB", "SHIP"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 26 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('FOB', 'MAIL', 'SHIP', 'TRUCK') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1998-04-30' and l_receiptdate < DATE '1998-04-30' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 7866034.46 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 7866034.46 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 7866034.46 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 7866034.46 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 7811026.76 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 7811026.76 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 7811026.76 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "FOB", "MAIL", "SHIP", "TRUCK"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 17044131.00 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1998-04-30), lt(tpch_sf40.lineitem.l_receiptdate, 2003-04-30), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 27 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('AIR', 'TRUCK', 'REG AIR', 'SHIP') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1997-08-05' and l_receiptdate < DATE '1997-08-05' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 20206163.19 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 20206163.19 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 20206163.19 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 20206163.19 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 20064860.15 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 20064860.15 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 20064860.15 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "AIR", "TRUCK", "REG AIR", "SHIP"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 43932890.00 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1997-08-05), lt(tpch_sf40.lineitem.l_receiptdate, 2002-08-05), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 28 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('REG AIR', 'TRUCK', 'MAIL', 'AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1995-09-25' and l_receiptdate < DATE '1995-09-25' + INTERVAL 4 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.49 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.49 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.49 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.49 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.49 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.49 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.49 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.49 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.49 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 51409693.96 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 51409693.96 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 51409693.96 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 51409693.96 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 51050182.54 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 51050182.54 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 51050182.54 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 63812728.18 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1995-09-25), in(tpch_sf40.lineitem.l_shipmode, "REG AIR", "TRUCK", "MAIL", "AIR"), lt(tpch_sf40.lineitem.l_receiptdate, 1999-09-25), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 29 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('SHIP', 'REG AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1997-02-19' and l_receiptdate < DATE '1997-02-19' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 13763283.46 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 13763283.46 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 13763283.46 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 13763283.46 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 13667035.90 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 13667035.90 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 13667035.90 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "SHIP", "REG AIR"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 60334208.00 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1997-02-19), lt(tpch_sf40.lineitem.l_receiptdate, 2002-02-19), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 30 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('RAIL', 'REG AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1997-06-23' and l_receiptdate < DATE '1997-06-23' + INTERVAL 4 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 10983692.94 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 10983692.94 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 10983692.94 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 10983692.94 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 10906883.24 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 10906883.24 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 10906883.24 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "RAIL", "REG AIR"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 48132268.10 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1997-06-23), lt(tpch_sf40.lineitem.l_receiptdate, 2001-06-23), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 31 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('MAIL', 'FOB', 'REG AIR', 'RAIL') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1996-03-15' and l_receiptdate < DATE '1996-03-15' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.26 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.26 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.26 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.26 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.26 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.26 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.26 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.26 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.26 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 43343866.01 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 43343866.01 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 43343866.01 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 43343866.01 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 43040759.47 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 43040759.47 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 43040759.47 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "MAIL", "FOB", "REG AIR", "RAIL"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 94352507.00 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1996-03-15), lt(tpch_sf40.lineitem.l_receiptdate, 2001-03-15), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 32 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('TRUCK', 'SHIP') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1995-12-30' and l_receiptdate < DATE '1995-12-30' + INTERVAL 2 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 16732202.74 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 16732202.74 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 16732202.74 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 16732202.74 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 16615193.33 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 16615193.33 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 16615193.33 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1995-12-30), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1997-12-30), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 68618028.86 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "TRUCK", "SHIP"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 33 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('MAIL', 'AIR', 'TRUCK', 'SHIP') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1997-07-07' and l_receiptdate < DATE '1997-07-07' + INTERVAL 2 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 21610097.72 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 21610097.72 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 21610097.72 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 21610097.72 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 21458976.87 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 21458976.87 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 21458976.87 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "MAIL", "AIR", "TRUCK", "SHIP"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 46804691.00 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1997-07-07), lt(tpch_sf40.lineitem.l_receiptdate, 1999-07-07), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 34 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('RAIL', 'REG AIR', 'AIR', 'MAIL') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1994-10-15' and l_receiptdate < DATE '1994-10-15' + INTERVAL 6 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_9 | 1.94 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_99 | 1.94 | root |  | MppVersion: 2, data:ExchangeSender_98
+  └─ExchangeSender_98 | 1.94 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_12 | 1.94 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_94 | 1.94 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_95 | 1.94 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_97 | 1.94 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_96 | 1.94 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_92 | 1.94 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_102 | 67063908.77 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_81 | 67063908.77 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode, tpch_sf40.lineitem.l_orderkey
+                    └─HashJoin_80 | 67063908.77 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                      ├─ExchangeReceiver_46(Build) | 60000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_45 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_44 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+                      └─ExchangeReceiver_50(Probe) | 66594926.39 | mpp[tiflash] |  | 
+                        └─ExchangeSender_49 | 66594926.39 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                          └─Selection_48 | 66594926.39 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                            └─TableFullScan_47 | 83243657.99 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1994-10-15), in(tpch_sf40.lineitem.l_shipmode, "RAIL", "REG AIR", "AIR", "MAIL"), lt(tpch_sf40.lineitem.l_receiptdate, 2000-10-15), keep order:false
+
+
+--- Line 35 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('TRUCK', 'AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1996-05-29' and l_receiptdate < DATE '1996-05-29' + INTERVAL 3 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 20139543.56 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 20139543.56 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 20139543.56 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 20139543.56 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 19998706.39 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 19998706.39 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 19998706.39 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1996-05-29), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1999-05-29), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 69061727.86 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "TRUCK", "AIR"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 36 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('REG AIR', 'SHIP', 'RAIL') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1992-05-26' and l_receiptdate < DATE '1992-05-26' + INTERVAL 3 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.09 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.09 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.09 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.09 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.09 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.09 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.09 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.09 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.09 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 37498007.24 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 37498007.24 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 37498007.24 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 37498007.24 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 37235781.18 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 37235781.18 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 37235781.18 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 46544726.47 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1992-05-26), in(tpch_sf40.lineitem.l_shipmode, "REG AIR", "SHIP", "RAIL"), lt(tpch_sf40.lineitem.l_receiptdate, 1995-05-26), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 37 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('FOB', 'SHIP') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1992-06-08' and l_receiptdate < DATE '1992-06-08' + INTERVAL 3 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 25179615.62 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 25179615.62 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 25179615.62 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 25179615.62 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 25003532.88 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 25003532.88 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 25003532.88 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1992-06-08), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1995-06-08), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 68569943.86 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "FOB", "SHIP"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 38 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('SHIP', 'RAIL', 'FOB', 'REG AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1995-02-11' and l_receiptdate < DATE '1995-02-11' + INTERVAL 2 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 33426333.65 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 33426333.65 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 33426333.65 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 33426333.65 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 33192581.07 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 33192581.07 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 33192581.07 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "SHIP", "RAIL", "FOB", "REG AIR"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 72925550.22 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1995-02-11), lt(tpch_sf40.lineitem.l_receiptdate, 1997-02-11), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 39 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('FOB', 'RAIL', 'REG AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1994-04-23' and l_receiptdate < DATE '1994-04-23' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.63 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.63 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.63 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.63 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.63 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.63 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.63 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.63 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.63 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 56139239.85 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 56139239.85 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 56139239.85 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 56139239.85 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 55746654.40 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 55746654.40 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 55746654.40 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1994-04-23), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1999-04-23), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 102461489.28 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "FOB", "RAIL", "REG AIR"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 40 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('FOB', 'REG AIR', 'TRUCK') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1992-08-14' and l_receiptdate < DATE '1992-08-14' + INTERVAL 3 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.09 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.09 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.09 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.09 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.09 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.09 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.09 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.09 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.09 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 37727582.27 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 37727582.27 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 37727582.27 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 37727582.27 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 37463750.78 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 37463750.78 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 37463750.78 | mpp[tiflash] |  | lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 46829688.47 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1992-08-14), in(tpch_sf40.lineitem.l_shipmode, "FOB", "REG AIR", "TRUCK"), lt(tpch_sf40.lineitem.l_receiptdate, 1995-08-14), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 41 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('FOB', 'TRUCK') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1996-03-04' and l_receiptdate < DATE '1996-03-04' + INTERVAL 3 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 22127015.17 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 22127015.17 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 22127015.17 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 22127015.17 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 21972279.48 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 21972279.48 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 21972279.48 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1996-03-04), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1999-03-04), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 69002713.86 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "FOB", "TRUCK"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 42 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('MAIL', 'TRUCK', 'REG AIR', 'AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1994-05-20' and l_receiptdate < DATE '1994-05-20' + INTERVAL 1 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 16713201.50 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 16713201.50 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 16713201.50 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 16713201.50 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 16596324.97 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 16596324.97 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 16596324.97 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "MAIL", "TRUCK", "REG AIR", "AIR"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 36257986.70 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1994-05-20), lt(tpch_sf40.lineitem.l_receiptdate, 1995-05-20), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 43 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('TRUCK', 'AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1995-11-02' and l_receiptdate < DATE '1995-11-02' + INTERVAL 1 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 8441271.56 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 8441271.56 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 8441271.56 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 8441271.56 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 8382241.19 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 8382241.19 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 8382241.19 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "TRUCK", "AIR"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 36413817.11 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1995-11-02), lt(tpch_sf40.lineitem.l_receiptdate, 1996-11-02), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 44 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('SHIP', 'REG AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1995-07-18' and l_receiptdate < DATE '1995-07-18' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 27008516.61 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 27008516.61 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 27008516.61 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 27008516.61 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 26819644.25 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 26819644.25 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 26819644.25 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1995-07-18), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 2000-07-18), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 67960131.85 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "SHIP", "REG AIR"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 45 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('MAIL', 'TRUCK', 'REG AIR', 'SHIP') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1998-05-20' and l_receiptdate < DATE '1998-05-20' + INTERVAL 1 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 6942384.86 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 6942384.86 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 6942384.86 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 6942384.86 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 6893836.30 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 6893836.30 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 6893836.30 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "MAIL", "TRUCK", "REG AIR", "SHIP"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 15109782.00 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1998-05-20), lt(tpch_sf40.lineitem.l_receiptdate, 1999-05-20), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 46 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('TRUCK', 'MAIL', 'FOB') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1993-09-04' and l_receiptdate < DATE '1993-09-04' + INTERVAL 5 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_9 | 1.83 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_99 | 1.83 | root |  | MppVersion: 2, data:ExchangeSender_98
+  └─ExchangeSender_98 | 1.83 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_12 | 1.83 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_94 | 1.83 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_95 | 1.83 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_97 | 1.83 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_96 | 1.83 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_92 | 1.83 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_102 | 63121718.44 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_81 | 63121718.44 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode, tpch_sf40.lineitem.l_orderkey
+                    └─HashJoin_80 | 63121718.44 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)], stream_count: 2
+                      ├─ExchangeReceiver_46(Build) | 60000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_45 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_44 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+                      └─ExchangeReceiver_50(Probe) | 62680304.06 | mpp[tiflash] |  | 
+                        └─ExchangeSender_49 | 62680304.06 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary]
+                          └─Selection_48 | 62680304.06 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1993-09-04), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1998-09-04), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                            └─TableFullScan_47 | 103399157.29 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "TRUCK", "MAIL", "FOB"), keep order:false
+
+
+--- Line 47 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('SHIP', 'REG AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1994-03-28' and l_receiptdate < DATE '1994-03-28' + INTERVAL 4 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 33157375.80 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 33157375.80 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 33157375.80 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 33157375.80 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 32925504.06 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 32925504.06 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 32925504.06 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1994-03-28), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1998-03-28), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 67960131.85 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "SHIP", "REG AIR"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 48 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('REG AIR', 'TRUCK') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1993-12-22' and l_receiptdate < DATE '1993-12-22' + INTERVAL 1 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 8361477.71 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 8361477.71 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 8361477.71 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 8361477.71 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 8303005.34 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 8303005.34 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 8303005.34 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "REG AIR", "TRUCK"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 36422334.62 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1993-12-22), lt(tpch_sf40.lineitem.l_receiptdate, 1994-12-22), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 49 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('FOB', 'REG AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1993-04-25' and l_receiptdate < DATE '1993-04-25' + INTERVAL 4 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 33488157.36 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 33488157.36 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 33488157.36 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 33488157.36 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 33253972.45 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 33253972.45 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 33253972.45 | mpp[tiflash] |  | ge(tpch_sf40.lineitem.l_receiptdate, 1993-04-25), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_receiptdate, 1997-04-25), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 68344816.85 | mpp[tiflash] | table:lineitem | pushed down filter:in(tpch_sf40.lineitem.l_shipmode, "FOB", "REG AIR"), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+
+--- Line 50 ---
+select l_shipmode, sum(case when o_orderpriority = '1-URGENT' or o_orderpriority = '2-HIGH' then 1 else 0 end) as high_line_count, sum(case when o_orderpriority <> '1-URGENT' and o_orderpriority <> '2-HIGH' then 1 else 0 end) as low_line_count from orders, lineitem where o_orderkey = l_orderkey and l_shipmode in ('TRUCK', 'SHIP', 'AIR') and l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '1996-06-10' and l_receiptdate < DATE '1996-06-10' + INTERVAL 1 YEAR group by l_shipmode order by l_shipmode;
+
+Execution Plan:
+Sort_10 | 1.00 | root |  | tpch_sf40.lineitem.l_shipmode
+└─TableReader_106 | 1.00 | root |  | MppVersion: 2, data:ExchangeSender_105
+  └─ExchangeSender_105 | 1.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 1.00 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, Column#26, Column#27
+      └─Projection_101 | 1.00 | mpp[tiflash] |  | Column#26, Column#27, tpch_sf40.lineitem.l_shipmode
+        └─HashAgg_102 | 1.00 | mpp[tiflash] |  | group by:tpch_sf40.lineitem.l_shipmode, funcs:sum(Column#34)->Column#26, funcs:sum(Column#35)->Column#27, funcs:firstrow(tpch_sf40.lineitem.l_shipmode)->tpch_sf40.lineitem.l_shipmode, stream_count: 2
+          └─ExchangeReceiver_104 | 1.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_103 | 1.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_shipmode, collate: utf8mb4_bin], stream_count: 2
+              └─HashAgg_99 | 1.00 | mpp[tiflash] |  | group by:Column#39, funcs:sum(Column#37)->Column#34, funcs:sum(Column#38)->Column#35
+                └─Projection_109 | 12591541.30 | mpp[tiflash] |  | cast(case(or(eq(tpch_sf40.orders.o_orderpriority, 1-URGENT), eq(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#37, cast(case(and(ne(tpch_sf40.orders.o_orderpriority, 1-URGENT), ne(tpch_sf40.orders.o_orderpriority, 2-HIGH)), 1, 0), decimal(20,0) BINARY)->Column#38, tpch_sf40.lineitem.l_shipmode->Column#39
+                  └─Projection_88 | 12591541.30 | mpp[tiflash] |  | tpch_sf40.orders.o_orderpriority, tpch_sf40.lineitem.l_shipmode
+                    └─Projection_78 | 12591541.30 | mpp[tiflash] |  | tpch_sf40.lineitem.l_shipmode, tpch_sf40.orders.o_orderpriority, tpch_sf40.orders.o_orderkey
+                      └─HashJoin_77 | 12591541.30 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], stream_count: 2
+                        ├─ExchangeReceiver_51(Build) | 12503487.81 | mpp[tiflash] |  | stream_count: 2
+                        │ └─ExchangeSender_50 | 12503487.81 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+                        │   └─Selection_49 | 12503487.81 | mpp[tiflash] |  | in(tpch_sf40.lineitem.l_shipmode, "TRUCK", "SHIP", "AIR"), lt(tpch_sf40.lineitem.l_commitdate, tpch_sf40.lineitem.l_receiptdate), lt(tpch_sf40.lineitem.l_shipdate, tpch_sf40.lineitem.l_commitdate)
+                        │     └─TableFullScan_48 | 36365293.00 | mpp[tiflash] | table:lineitem | pushed down filter:ge(tpch_sf40.lineitem.l_receiptdate, 1996-06-10), lt(tpch_sf40.lineitem.l_receiptdate, 1997-06-10), keep order:false
+                        └─ExchangeReceiver_54(Probe) | 60000000.00 | mpp[tiflash] |  | 
+                          └─ExchangeSender_53 | 60000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+                            └─TableFullScan_52 | 60000000.00 | mpp[tiflash] | table:orders | keep order:false
+
+

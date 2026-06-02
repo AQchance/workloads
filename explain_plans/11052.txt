@@ -1,0 +1,20 @@
+-- Query: 11052
+-- Execution time: .105905653s
+
+id	estRows	task	access object	operator info
+Projection_16	10.00	root		tpch_sf40.customer.c_name, Column#34, Column#35
+└─TopN_19	10.00	root		Column#35:desc, offset:0, count:10
+  └─HashAgg_26	6000000.00	root		group by:tpch_sf40.customer.c_name, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#34, funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#35, funcs:firstrow(tpch_sf40.customer.c_name)->tpch_sf40.customer.c_name
+    └─IndexHashJoin_39	37014321.89	root		inner join, inner:TableReader_34, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      ├─TableReader_107(Build)	9188399.08	root		MppVersion: 2, data:ExchangeSender_106
+      │ └─ExchangeSender_106	9188399.08	mpp[tiflash]		ExchangeType: PassThrough
+      │   └─Projection_105	9188399.08	mpp[tiflash]		tpch_sf40.customer.c_name, tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_custkey
+      │     └─HashJoin_78	9188399.08	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+      │       ├─ExchangeReceiver_47(Build)	6000000.00	mpp[tiflash]		stream_count: 2
+      │       │ └─ExchangeSender_46	6000000.00	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+      │       │   └─TableFullScan_45	6000000.00	mpp[tiflash]	table:c	keep order:false
+      │       └─ExchangeReceiver_51(Probe)	9188399.08	mpp[tiflash]		
+      │         └─ExchangeSender_50	9188399.08	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+      │           └─TableFullScan_48	9188399.08	mpp[tiflash]	table:o	pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1997-01-01), le(tpch_sf40.orders.o_orderdate, 1997-12-31), keep order:false
+      └─TableReader_34(Probe)	9188399.08	root		data:TableRangeScan_33
+        └─TableRangeScan_33	9188399.08	cop[tikv]	table:l	range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false

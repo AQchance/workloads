@@ -1,0 +1,24 @@
+-- Query: 15906
+-- Execution time: .106260645s
+
+id	estRows	task	access object	operator info
+Sort_17	25.00	root		Column#29:desc
+└─Projection_19	25.00	root		tpch_sf40.nation.n_name, Column#29
+  └─HashAgg_23	25.00	root		group by:tpch_sf40.nation.n_name, funcs:sum(tpch_sf40.orders.o_totalprice)->Column#29, funcs:firstrow(tpch_sf40.nation.n_name)->tpch_sf40.nation.n_name
+    └─IndexHashJoin_35	6102537.92	root		inner join, inner:IndexLookUp_32, outer key:tpch_sf40.customer.c_custkey, inner key:tpch_sf40.orders.o_custkey, equal cond:eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)
+      ├─TableReader_102(Build)	399988.00	root		MppVersion: 2, data:ExchangeSender_101
+      │ └─ExchangeSender_101	399988.00	mpp[tiflash]		ExchangeType: PassThrough
+      │   └─Projection_100	399988.00	mpp[tiflash]		tpch_sf40.nation.n_name, tpch_sf40.customer.c_custkey
+      │     └─HashJoin_86	399988.00	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.customer.c_custkey)]
+      │       ├─ExchangeReceiver_53(Build)	399988.00	mpp[tiflash]		
+      │       │ └─ExchangeSender_52	399988.00	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+      │       │   └─Projection_51	399988.00	mpp[tiflash]		tpch_sf40.nation.n_name, tpch_sf40.supplier.s_suppkey
+      │       │     └─HashJoin_46	399988.00	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.nation.n_nationkey, tpch_sf40.supplier.s_nationkey)]
+      │       │       ├─ExchangeReceiver_49(Build)	25.00	mpp[tiflash]		
+      │       │       │ └─ExchangeSender_48	25.00	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+      │       │       │   └─TableFullScan_47	25.00	mpp[tiflash]	table:nation	keep order:false
+      │       │       └─TableFullScan_50(Probe)	400000.00	mpp[tiflash]	table:supplier	keep order:false
+      │       └─TableFullScan_54(Probe)	6000000.00	mpp[tiflash]	table:customer	keep order:false
+      └─IndexLookUp_32(Probe)	6102537.92	root		
+        ├─IndexRangeScan_30(Build)	6102537.92	cop[tikv]	table:orders, index:idx_orders_fk1(o_custkey)	range: decided by [eq(tpch_sf40.orders.o_custkey, tpch_sf40.customer.c_custkey)], keep order:false
+        └─TableRowIDScan_31(Probe)	6102537.92	cop[tikv]	table:orders	keep order:false

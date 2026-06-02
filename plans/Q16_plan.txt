@@ -1,0 +1,1400 @@
+--- Line 1 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'LARGE POLISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_type not like 'SMALL BURNISHED%' and p_size in (30, 27, 2, 46, 42, 34, 26, 6) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Problems%' or s_comment like '%Customer%Returns%' or s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.81 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.81 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.81 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.81 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.81 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.81 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.81 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.81 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.81 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3173021.89 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3966277.36 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3966277.36 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3966277.36 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 987190.57 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 987190.57 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 987190.57 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1285595.82 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 30, 27, 2, 46, 42, 34, 26, 6), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 2 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'STANDARD POLISHED%' and p_type not like 'LARGE POLISHED%' and p_type not like 'SMALL BURNISHED%' and p_size in (3, 40, 39, 41, 45, 38, 14, 33) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Returns%' or s_comment like '%Customer%Dislikes%' or s_comment like '%Customer%Damages%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.66 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.66 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.66 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.66 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.66 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.66 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.66 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.66 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.66 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3141698.69 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3927123.36 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3927123.36 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3927123.36 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 977445.30 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 977445.30 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 977445.30 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1272904.77 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 3, 40, 39, 41, 45, 38, 14, 33), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 3 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'MEDIUM POLISHED%' and p_type not like 'SMALL BURNISHED%' and p_type not like 'LARGE POLISHED%' and p_size in (47, 6, 46, 41, 10, 27, 9, 21) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Problems%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.83 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.83 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.83 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.83 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.83 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.83 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.83 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.83 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.83 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3178780.06 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3973475.08 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3973475.08 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3973475.08 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 988982.05 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 988982.05 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 988982.05 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1287928.83 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 47, 6, 46, 41, 10, 27, 9, 21), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 4 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'LARGE POLISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_size in (29, 46, 19, 17, 34, 9, 41, 42) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Problems%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.87 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.87 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.87 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.87 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.87 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.87 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.87 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.87 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.87 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3187243.32 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3984054.16 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3984054.16 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3984054.16 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 991615.14 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 991615.14 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 991615.14 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1291357.84 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 29, 46, 19, 17, 34, 9, 41, 42), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 5 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'ECONOMY ANODIZED%' and p_size in (13, 35, 26, 9, 36, 40, 4, 42) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Dislikes%' or s_comment like '%Customer%Problems%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.70 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.70 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.70 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.70 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.70 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.70 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.70 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.70 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.70 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3150159.48 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3937699.35 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3937699.35 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3937699.35 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 980077.62 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 980077.62 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 980077.62 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92))
+                        │     └─TableFullScan_38 | 1276332.79 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 13, 35, 26, 9, 36, 40, 4, 42), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 6 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'LARGE POLISHED%' and p_type not like 'MEDIUM POLISHED%' and p_size in (29, 17, 3, 15, 33, 6, 12, 13) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Returns%' or s_comment like '%Customer%Dislikes%' or s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.71 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.71 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.71 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.71 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.71 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.71 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.71 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.71 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.71 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3153039.80 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3941299.76 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3941299.76 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3941299.76 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 980973.74 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 980973.74 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 980973.74 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1277499.79 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 29, 17, 3, 15, 33, 6, 12, 13), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 7 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_size in (7, 15, 5, 38, 21, 13, 47, 43) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Dislikes%' or s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.79 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.79 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.79 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.79 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.79 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.79 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.79 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.79 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.79 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3169961.39 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3962451.74 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3962451.74 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3962451.74 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 986238.39 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 986238.39 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 986238.39 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1284355.82 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 7, 15, 5, 38, 21, 13, 47, 43), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 8 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'ECONOMY ANODIZED%' and p_size in (38, 3, 2, 13, 20, 8, 18, 27) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Returns%' or s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.70 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.70 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.70 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.70 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.70 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.70 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.70 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.70 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.70 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3150880.18 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3938600.22 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3938600.22 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3938600.22 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 980301.84 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 980301.84 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 980301.84 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92))
+                        │     └─TableFullScan_38 | 1276624.79 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 38, 3, 2, 13, 20, 8, 18, 27), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 9 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'STANDARD POLISHED%' and p_type not like 'MEDIUM POLISHED%' and p_size in (35, 22, 50, 49, 43, 24, 36, 45) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Dislikes%' or s_comment like '%Customer%Problems%' or s_comment like '%Customer%Issues%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.79 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.79 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.79 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.79 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.79 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.79 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.79 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.79 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.79 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3168339.82 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3960424.78 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3960424.78 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3960424.78 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 985733.88 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 985733.88 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 985733.88 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1283698.81 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 35, 22, 50, 49, 43, 24, 36, 45), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 10 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'STANDARD POLISHED%' and p_type not like 'SMALL BURNISHED%' and p_size in (37, 10, 35, 28, 26, 41, 9, 17) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Returns%' or s_comment like '%Customer%Problems%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.84 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.84 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.84 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.84 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.84 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.84 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.84 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.84 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.84 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3178960.24 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3973700.30 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3973700.30 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3973700.30 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 989038.11 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 989038.11 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 989038.11 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1288001.83 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 37, 10, 35, 28, 26, 41, 9, 17), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 11 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'MEDIUM POLISHED%' and p_size in (42, 16, 11, 8, 7, 37, 4, 40) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.69 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.69 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.69 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.69 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.69 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.69 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.69 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.69 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.69 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3148180.03 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3935225.04 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3935225.04 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3935225.04 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 979461.77 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 979461.77 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 979461.77 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1275530.78 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 42, 16, 11, 8, 7, 37, 4, 40), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 12 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'MEDIUM POLISHED%' and p_size in (45, 1, 3, 25, 31, 6, 22, 24) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.68 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.68 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.68 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.68 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.68 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.68 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.68 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.68 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.68 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3145837.76 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3932297.21 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3932297.21 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3932297.21 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 978733.05 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 978733.05 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 978733.05 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1274581.78 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 45, 1, 3, 25, 31, 6, 22, 24), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 13 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_size in (18, 43, 23, 35, 40, 45, 4, 37) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Damages%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.93 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.93 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.93 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.93 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.93 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.93 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.93 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.93 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.93 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3200023.37 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 4000029.21 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 4000029.21 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 4000029.21 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 995591.27 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 995591.27 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 995591.27 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1296535.86 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 18, 43, 23, 35, 40, 45, 4, 37), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 14 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'STANDARD POLISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_type not like 'MEDIUM POLISHED%' and p_size in (40, 41, 43, 19, 13, 46, 4, 21) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%' or s_comment like '%Customer%Returns%' or s_comment like '%Customer%Damages%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.91 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.91 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.91 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.91 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.91 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.91 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.91 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.91 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.91 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3194445.36 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3993056.71 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3993056.71 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3993056.71 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 993855.84 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 993855.84 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 993855.84 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1294275.85 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 40, 41, 43, 19, 13, 46, 4, 21), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 15 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_type not like 'MEDIUM POLISHED%' and p_size in (31, 10, 43, 29, 8, 41, 7, 36) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Complaints%' or s_comment like '%Customer%Problems%' or s_comment like '%Customer%Dislikes%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.73 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.73 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.73 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.73 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.73 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.73 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.73 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.73 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.73 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3157359.05 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3946698.82 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3946698.82 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3946698.82 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 982317.55 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 982317.55 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 982317.55 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1279249.80 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 31, 10, 43, 29, 8, 41, 7, 36), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 16 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_type not like 'LARGE POLISHED%' and p_size in (41, 26, 24, 25, 37, 34, 49, 6) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Complaints%' or s_comment like '%Customer%Damages%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.67 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.67 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.67 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.67 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.67 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.67 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.67 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.67 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.67 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3144218.66 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3930273.33 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3930273.33 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3930273.33 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 978229.31 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 978229.31 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 978229.31 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1273925.78 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 41, 26, 24, 25, 37, 34, 49, 6), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 17 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_size in (40, 10, 6, 4, 21, 33, 26, 17) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Dislikes%' or s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.68 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.68 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.68 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.68 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.68 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.68 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.68 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.68 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.68 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3144759.19 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3930948.98 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3930948.98 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3930948.98 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 978397.48 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 978397.48 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 978397.48 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1274144.78 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 40, 10, 6, 4, 21, 33, 26, 17), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 18 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'STANDARD POLISHED%' and p_size in (50, 44, 2, 28, 32, 29, 14, 10) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Complaints%' or s_comment like '%Customer%Returns%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.76 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.76 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.76 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.76 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.76 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.76 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.76 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.76 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.76 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3163480.05 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3954350.06 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3954350.06 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3954350.06 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 984221.91 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 984221.91 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 984221.91 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1281729.81 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 50, 44, 2, 28, 32, 29, 14, 10), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 19 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'ECONOMY ANODIZED%' and p_type not like 'STANDARD POLISHED%' and p_type not like 'MEDIUM POLISHED%' and p_size in (30, 23, 19, 15, 8, 11, 35, 1) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Dislikes%' or s_comment like '%Customer%Returns%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.89 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.89 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.89 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.89 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.89 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.89 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.89 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.89 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.89 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3191024.52 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3988780.65 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3988780.65 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3988780.65 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 992791.55 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 992791.55 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 992791.55 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1292889.85 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 30, 23, 19, 15, 8, 11, 35, 1), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 20 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'MEDIUM POLISHED%' and p_size in (16, 14, 35, 39, 5, 8, 25, 50) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%' or s_comment like '%Customer%Problems%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.63 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.63 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.63 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.63 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.63 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.63 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.63 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.63 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.63 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3134857.00 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3918571.25 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3918571.25 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3918571.25 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 975316.71 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 975316.71 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 975316.71 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1270132.76 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 16, 14, 35, 39, 5, 8, 25, 50), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 21 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'ECONOMY ANODIZED%' and p_type not like 'MEDIUM POLISHED%' and p_type not like 'LARGE POLISHED%' and p_size in (30, 35, 31, 7, 45, 26, 32, 48) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.89 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.89 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.89 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.89 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.89 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.89 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.89 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.89 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.89 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3189943.47 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3987429.34 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3987429.34 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3987429.34 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 992455.21 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 992455.21 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 992455.21 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1292451.85 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 30, 35, 31, 7, 45, 26, 32, 48), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 22 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_type not like 'LARGE POLISHED%' and p_size in (14, 44, 28, 30, 26, 47, 34, 49) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%' or s_comment like '%Customer%Damages%' or s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.77 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.77 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.77 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.77 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.77 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.77 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.77 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.77 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.77 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3165104.09 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3956380.11 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3956380.11 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3956380.11 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 984727.18 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 984727.18 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 984727.18 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1282387.81 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 14, 44, 28, 30, 26, 47, 34, 49), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 23 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'LARGE POLISHED%' and p_type not like 'MEDIUM POLISHED%' and p_size in (49, 2, 22, 4, 41, 3, 12, 43) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Problems%' or s_comment like '%Customer%Damages%' or s_comment like '%Customer%Returns%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.76 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.76 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.76 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.76 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.76 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.76 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.76 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.76 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.76 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3163302.34 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3954127.93 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3954127.93 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3954127.93 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 984166.62 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 984166.62 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 984166.62 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1281657.81 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 49, 2, 22, 4, 41, 3, 12, 43), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 24 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'STANDARD POLISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_type not like 'MEDIUM POLISHED%' and p_size in (30, 24, 45, 14, 22, 49, 3, 37) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Returns%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.61 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.61 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.61 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.61 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.61 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.61 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.61 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.61 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.61 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3131078.27 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3913847.84 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3913847.84 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3913847.84 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 974141.07 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 974141.07 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 974141.07 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1268601.76 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 30, 24, 45, 14, 22, 49, 3, 37), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 25 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'ECONOMY ANODIZED%' and p_type not like 'SMALL BURNISHED%' and p_size in (19, 22, 26, 6, 8, 13, 35, 39) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Dislikes%' or s_comment like '%Customer%Damages%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.88 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.88 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.88 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.88 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.88 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.88 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.88 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.88 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.88 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3188504.55 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3985630.68 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3985630.68 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3985630.68 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 992007.53 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 992007.53 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 992007.53 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1291868.84 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 19, 22, 26, 6, 8, 13, 35, 39), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 26 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'STANDARD POLISHED%' and p_size in (26, 20, 15, 25, 3, 18, 29, 39) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.60 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.60 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.60 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.60 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.60 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.60 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.60 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.60 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.60 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3129456.70 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3911820.88 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3911820.88 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3911820.88 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 973636.57 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 973636.57 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 973636.57 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1267944.75 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 26, 20, 15, 25, 3, 18, 29, 39), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 27 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'STANDARD POLISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_size in (14, 34, 33, 7, 10, 3, 17, 39) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.62 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.62 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.62 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.62 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.62 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.62 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.62 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.62 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.62 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3131979.14 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3914973.93 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3914973.93 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3914973.93 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 974421.35 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 974421.35 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 974421.35 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1268966.76 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 14, 34, 33, 7, 10, 3, 17, 39), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 28 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'STANDARD POLISHED%' and p_size in (16, 28, 36, 10, 29, 25, 19, 39) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%' or s_comment like '%Customer%Damages%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.62 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.62 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.62 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.62 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.62 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.62 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.62 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.62 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.62 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3131976.68 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3914970.84 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3914970.84 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3914970.84 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 974420.58 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 974420.58 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 974420.58 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1268965.76 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 16, 28, 36, 10, 29, 25, 19, 39), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 29 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_type not like 'MEDIUM POLISHED%' and p_size in (8, 21, 44, 36, 41, 20, 48, 1) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Returns%' or s_comment like '%Customer%Issues%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.57 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.57 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.57 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.57 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.57 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.57 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.57 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.57 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.57 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3120995.91 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3901244.89 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3901244.89 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3901244.89 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 971004.25 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 971004.25 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 971004.25 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1264516.74 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 8, 21, 44, 36, 41, 20, 48, 1), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 30 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'STANDARD POLISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_type not like 'SMALL BURNISHED%' and p_size in (27, 14, 11, 37, 50, 18, 20, 42) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Returns%' or s_comment like '%Customer%Dislikes%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.64 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.64 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.64 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.64 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.64 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.64 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.64 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.64 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.64 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3136656.27 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3920820.34 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3920820.34 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3920820.34 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 975876.50 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 975876.50 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 975876.50 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1270861.77 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 27, 14, 11, 37, 50, 18, 20, 42), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 31 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_type not like 'MEDIUM POLISHED%' and p_size in (6, 34, 9, 36, 42, 24, 20, 44) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.61 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.61 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.61 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.61 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.61 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.61 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.61 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.61 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.61 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3129817.05 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3912271.31 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3912271.31 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3912271.31 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 973748.68 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 973748.68 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 973748.68 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1268090.76 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 6, 34, 9, 36, 42, 24, 20, 44), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 32 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_type not like 'STANDARD POLISHED%' and p_size in (33, 3, 28, 44, 18, 34, 50, 47) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Returns%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.78 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.78 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.78 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.78 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.78 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.78 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.78 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.78 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.78 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3166543.01 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3958178.77 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3958178.77 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3958178.77 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 985174.86 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 985174.86 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 985174.86 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1282970.81 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 33, 3, 28, 44, 18, 34, 50, 47), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 33 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_type not like 'STANDARD POLISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_size in (30, 22, 41, 32, 13, 46, 16, 23) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Problems%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.79 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.79 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.79 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.79 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.79 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.79 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.79 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.79 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.79 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3169060.52 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3961325.65 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3961325.65 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3961325.65 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 985958.11 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 985958.11 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 985958.11 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1283990.81 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 30, 22, 41, 32, 13, 46, 16, 23), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 34 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_size in (20, 50, 44, 2, 49, 24, 14, 31) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Damages%' or s_comment like '%Customer%Complaints%' or s_comment like '%Customer%Returns%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.73 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.73 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.73 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.73 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.73 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.73 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.73 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.73 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.73 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3157003.64 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3946254.55 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3946254.55 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3946254.55 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 982206.97 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 982206.97 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 982206.97 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1279105.80 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 20, 50, 44, 2, 49, 24, 14, 31), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 35 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'ECONOMY ANODIZED%' and p_size in (13, 9, 30, 24, 50, 25, 8, 41) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Dislikes%' or s_comment like '%Customer%Damages%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.55 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.55 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.55 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.55 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.55 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.55 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.55 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.55 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.55 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3118836.28 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3898545.36 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3898545.36 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3898545.36 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 970332.34 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 970332.34 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 970332.34 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92))
+                        │     └─TableFullScan_38 | 1263641.74 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 13, 9, 30, 24, 50, 25, 8, 41), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 36 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_type not like 'LARGE POLISHED%' and p_size in (23, 41, 18, 9, 7, 24, 6, 40) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Returns%' or s_comment like '%Customer%Dislikes%' or s_comment like '%Customer%Problems%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.78 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.78 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.78 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.78 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.78 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.78 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.78 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.78 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.78 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3166177.73 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3957722.16 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3957722.16 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3957722.16 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 985061.21 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 985061.21 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 985061.21 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1282822.81 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 23, 41, 18, 9, 7, 24, 6, 40), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 37 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'MEDIUM POLISHED%' and p_size in (25, 33, 28, 34, 16, 40, 43, 46) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Damages%' or s_comment like '%Customer%Returns%' or s_comment like '%Customer%Dislikes%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.84 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.84 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.84 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.84 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.84 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.84 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.84 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.84 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.84 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3180041.28 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3975051.61 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3975051.61 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3975051.61 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 989374.44 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 989374.44 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 989374.44 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1288439.83 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 25, 33, 28, 34, 16, 40, 43, 46), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 38 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'STANDARD POLISHED%' and p_size in (25, 19, 8, 45, 23, 50, 39, 11) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.78 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.78 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.78 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.78 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.78 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.78 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.78 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.78 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.78 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3167441.42 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3959301.77 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3959301.77 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3959301.77 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 985454.37 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 985454.37 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 985454.37 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1283334.81 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 25, 19, 8, 45, 23, 50, 39, 11), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 39 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'ECONOMY ANODIZED%' and p_type not like 'STANDARD POLISHED%' and p_size in (44, 41, 11, 42, 36, 18, 38, 21) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Complaints%' or s_comment like '%Customer%Problems%' or s_comment like '%Customer%Damages%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.56 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.56 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.56 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.56 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.56 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.56 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.56 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.56 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.56 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3119374.34 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3899217.92 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3899217.92 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3899217.92 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 970499.74 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 970499.74 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 970499.74 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1263859.74 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 44, 41, 11, 42, 36, 18, 38, 21), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 40 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'LARGE POLISHED%' and p_size in (48, 15, 22, 12, 42, 23, 45, 50) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%' or s_comment like '%Customer%Dislikes%' or s_comment like '%Customer%Damages%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.74 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.74 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.74 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.74 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.74 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.74 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.74 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.74 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.74 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3158620.28 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3948275.34 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3948275.34 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3948275.34 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 982709.94 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 982709.94 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 982709.94 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1279760.80 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 48, 15, 22, 12, 42, 23, 45, 50), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 41 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_size in (50, 29, 8, 15, 28, 19, 32, 43) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Problems%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.98 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.98 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.98 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.98 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.98 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.98 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.98 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.98 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.98 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3209925.55 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 4012406.94 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 4012406.94 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 4012406.94 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 998672.04 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 998672.04 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 998672.04 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1300547.88 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 50, 29, 8, 15, 28, 19, 32, 43), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 42 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_type not like 'STANDARD POLISHED%' and p_size in (7, 44, 35, 8, 12, 45, 43, 50) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Problems%' or s_comment like '%Customer%Returns%' or s_comment like '%Customer%Damages%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.93 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.93 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.93 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.93 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.93 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.93 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.93 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.93 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.93 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3199843.19 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3999803.99 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3999803.99 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3999803.99 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 995535.21 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 995535.21 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 995535.21 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1296462.86 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 7, 44, 35, 8, 12, 45, 43, 50), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 43 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'LARGE POLISHED%' and p_type not like 'SMALL BURNISHED%' and p_size in (1, 24, 39, 22, 48, 26, 27, 9) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%' or s_comment like '%Customer%Returns%' or s_comment like '%Customer%Dislikes%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.65 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.65 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.65 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.65 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.65 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.65 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.65 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.65 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.65 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3140257.29 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Dislikes%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3925321.62 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3925321.62 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3925321.62 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 976996.85 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 976996.85 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 976996.85 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1272320.77 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 1, 24, 39, 22, 48, 26, 27, 9), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 44 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'ECONOMY ANODIZED%' and p_type not like 'MEDIUM POLISHED%' and p_type not like 'STANDARD POLISHED%' and p_size in (28, 19, 11, 23, 39, 5, 42, 36) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%' or s_comment like '%Customer%Damages%' or s_comment like '%Customer%Problems%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.71 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.71 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.71 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.71 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.71 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.71 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.71 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.71 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.71 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3152138.93 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3940173.67 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3940173.67 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3940173.67 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 980693.46 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 980693.46 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 980693.46 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1277134.79 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 28, 19, 11, 23, 39, 5, 42, 36), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 45 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'MEDIUM POLISHED%' and p_type not like 'STANDARD POLISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_size in (47, 24, 27, 31, 33, 37, 34, 28) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.82 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.82 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.82 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.82 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.82 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.82 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.82 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.82 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.82 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3175904.68 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3969880.85 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3969880.85 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3969880.85 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 988087.46 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 988087.46 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 988087.46 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1286763.83 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 47, 24, 27, 31, 33, 37, 34, 28), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 46 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'SMALL BURNISHED%' and p_type not like 'STANDARD POLISHED%' and p_size in (38, 16, 47, 45, 13, 22, 42, 32) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.76 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.76 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.76 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.76 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.76 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.76 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.76 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.76 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.76 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3162761.82 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 320000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 320000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 320000.00 | mpp[tiflash] |  | like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92)
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3953452.27 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3953452.27 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3953452.27 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 983998.46 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 983998.46 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 983998.46 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92)), not(like(tpch_sf40.part.p_type, "STANDARD POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1281438.81 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 38, 16, 47, 45, 13, 22, 42, 32), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 47 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'LARGE POLISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_size in (46, 12, 29, 48, 31, 27, 2, 26) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Damages%' or s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.87 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.87 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.87 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.87 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.87 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.87 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.87 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.87 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.87 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3187243.32 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Damages%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3984054.16 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3984054.16 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3984054.16 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 991615.14 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 991615.14 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 991615.14 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1291357.84 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 46, 12, 29, 48, 31, 27, 2, 26), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 48 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'MEDIUM POLISHED%' and p_size in (41, 29, 36, 21, 13, 30, 25, 49) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Issues%' or s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.50 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.50 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.50 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.50 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.50 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.50 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.50 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.50 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.50 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3106053.77 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Issues%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3882567.22 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3882567.22 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3882567.22 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 966355.45 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 966355.45 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 966355.45 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1258462.72 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 41, 29, 36, 21, 13, 30, 25, 49), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 49 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'MEDIUM POLISHED%' and p_type not like 'LARGE POLISHED%' and p_size in (33, 8, 6, 40, 37, 35, 18, 34) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Problems%' or s_comment like '%Customer%Returns%' or s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.82 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.82 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.82 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.82 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.82 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.82 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.82 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.82 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.82 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3175001.34 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 396800.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 396800.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 396800.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Problems%", 92), or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92)))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3968751.67 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3968751.67 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3968751.67 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 987806.42 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 987806.42 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 987806.42 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "MEDIUM POLISHED%", 92))
+                        │     └─TableFullScan_38 | 1286397.82 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 33, 8, 6, 40, 37, 35, 18, 34), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+
+--- Line 50 ---
+select p_brand, p_type, p_size, count(distinct ps_suppkey) as supplier_cnt from partsupp, part where p_partkey = ps_partkey and p_brand <> 'Brand#52' and p_type not like 'LARGE POLISHED%' and p_type not like 'SMALL BURNISHED%' and p_type not like 'ECONOMY ANODIZED%' and p_size in (29, 10, 9, 41, 5, 7, 28, 27) and ps_suppkey not in ( select s_suppkey from supplier where (s_comment like '%Customer%Returns%' or s_comment like '%Customer%Complaints%') ) group by p_brand, p_type, p_size order by supplier_cnt desc, p_brand, p_type, p_size;
+
+Execution Plan:
+Sort_14 | 14.73 | root |  | Column#22:desc, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+└─TableReader_158 | 14.73 | root |  | MppVersion: 2, data:ExchangeSender_157
+  └─ExchangeSender_157 | 14.73 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_17 | 14.73 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, Column#22
+      └─Projection_153 | 14.73 | mpp[tiflash] |  | Column#22, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+        └─HashAgg_154 | 14.73 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#22, funcs:firstrow(tpch_sf40.part.p_brand)->tpch_sf40.part.p_brand, funcs:firstrow(tpch_sf40.part.p_type)->tpch_sf40.part.p_type, funcs:firstrow(tpch_sf40.part.p_size)->tpch_sf40.part.p_size, stream_count: 2
+          └─ExchangeReceiver_156 | 14.73 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_155 | 14.73 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_brand, collate: utf8mb4_bin], [name: tpch_sf40.part.p_type, collate: utf8mb4_bin], [name: tpch_sf40.part.p_size, collate: binary], stream_count: 2
+              └─HashAgg_151 | 14.73 | mpp[tiflash] |  | group by:tpch_sf40.part.p_brand, tpch_sf40.part.p_size, tpch_sf40.part.p_type, tpch_sf40.partsupp.ps_suppkey, 
+                └─HashJoin_140 | 3155374.67 | mpp[tiflash] |  | anti semi join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)]
+                  ├─ExchangeReceiver_47(Build) | 384000.00 | mpp[tiflash] |  | 
+                  │ └─ExchangeSender_46 | 384000.00 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                  │   └─Selection_45 | 384000.00 | mpp[tiflash] |  | or(like(tpch_sf40.supplier.s_comment, "%Customer%Returns%", 92), like(tpch_sf40.supplier.s_comment, "%Customer%Complaints%", 92))
+                  │     └─TableFullScan_44 | 400000.00 | mpp[tiflash] | table:supplier | pushed down filter:empty, keep order:false
+                  └─Projection_36(Probe) | 3944218.33 | mpp[tiflash] |  | tpch_sf40.partsupp.ps_suppkey, tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size
+                    └─Projection_43 | 3944218.33 | mpp[tiflash] |  | tpch_sf40.part.p_brand, tpch_sf40.part.p_type, tpch_sf40.part.p_size, tpch_sf40.partsupp.ps_suppkey
+                      └─HashJoin_37 | 3944218.33 | mpp[tiflash] |  | inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)]
+                        ├─ExchangeReceiver_41(Build) | 981700.17 | mpp[tiflash] |  | 
+                        │ └─ExchangeSender_40 | 981700.17 | mpp[tiflash] |  | ExchangeType: Broadcast, Compression: FAST
+                        │   └─Selection_39 | 981700.17 | mpp[tiflash] |  | ne(tpch_sf40.part.p_brand, "Brand#52"), not(like(tpch_sf40.part.p_type, "ECONOMY ANODIZED%", 92)), not(like(tpch_sf40.part.p_type, "LARGE POLISHED%", 92)), not(like(tpch_sf40.part.p_type, "SMALL BURNISHED%", 92))
+                        │     └─TableFullScan_38 | 1278445.79 | mpp[tiflash] | table:part | pushed down filter:in(tpch_sf40.part.p_size, 29, 10, 9, 41, 5, 7, 28, 27), keep order:false
+                        └─TableFullScan_42(Probe) | 32000000.00 | mpp[tiflash] | table:partsupp | keep order:false
+
+

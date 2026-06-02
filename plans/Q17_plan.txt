@@ -1,0 +1,1150 @@
+--- Line 1 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'WRAP BOX' or p_container = 'LG PACK' or p_container = 'LG BAG' or p_container = 'JUMBO CAN') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 971292.09 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 971292.09 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 32231.78 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 32231.78 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 32231.78 | mpp[tiflash] |  | or(or(eq(tpch_sf40.part.p_container, "WRAP BOX"), eq(tpch_sf40.part.p_container, "LG PACK")), or(eq(tpch_sf40.part.p_container, "LG BAG"), eq(tpch_sf40.part.p_container, "JUMBO CAN")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 971292.09 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 971292.09 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 971292.09 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 971292.09 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 971292.09 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 971292.09 | root |  | 
+        ├─IndexRangeScan_192(Build) | 971292.09 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 971292.09 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 971292.09 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 2 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'SM JAR' or p_container = 'LG CASE' or p_container = 'MED BOX') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 722861.79 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 722861.79 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 23987.76 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 23987.76 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 23987.76 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "SM JAR"), or(eq(tpch_sf40.part.p_container, "LG CASE"), eq(tpch_sf40.part.p_container, "MED BOX")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 722861.79 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 722861.79 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 722861.79 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 722861.79 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 722861.79 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 722861.79 | root |  | 
+        ├─IndexRangeScan_192(Build) | 722861.79 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 722861.79 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 722861.79 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 3 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'LG BOX' or p_container = 'SM CASE') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 483754.84 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 483754.84 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 16053.13 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 16053.13 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 16053.13 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "LG BOX"), eq(tpch_sf40.part.p_container, "SM CASE"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 483754.84 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 483754.84 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 483754.84 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 483754.84 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 483754.84 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 483754.84 | root |  | 
+        ├─IndexRangeScan_192(Build) | 483754.84 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 483754.84 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 483754.84 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 4 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'JUMBO DRUM' or p_container = 'MED BAG' or p_container = 'JUMBO PKG') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 717055.51 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 717055.51 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 23795.08 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 23795.08 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 23795.08 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "JUMBO DRUM"), or(eq(tpch_sf40.part.p_container, "MED BAG"), eq(tpch_sf40.part.p_container, "JUMBO PKG")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 717055.51 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 717055.51 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 717055.51 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 717055.51 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 717055.51 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 717055.51 | root |  | 
+        ├─IndexRangeScan_192(Build) | 717055.51 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 717055.51 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 717055.51 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 5 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'MED CAN' or p_container = 'JUMBO BOX') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 471525.94 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 471525.94 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 15647.32 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 15647.32 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 15647.32 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "MED CAN"), eq(tpch_sf40.part.p_container, "JUMBO BOX"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 471525.94 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 471525.94 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 471525.94 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 471525.94 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 471525.94 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 471525.94 | root |  | 
+        ├─IndexRangeScan_192(Build) | 471525.94 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 471525.94 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 471525.94 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 6 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'MED CAN' or p_container = 'WRAP BOX') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 477332.23 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 477332.23 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 15840.00 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 15840.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 15840.00 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "MED CAN"), eq(tpch_sf40.part.p_container, "WRAP BOX"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 477332.23 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 477332.23 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 477332.23 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 477332.23 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 477332.23 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 477332.23 | root |  | 
+        ├─IndexRangeScan_192(Build) | 477332.23 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 477332.23 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 477332.23 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 7 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'LG CAN') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 243504.48 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 243504.48 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 8080.56 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 8080.56 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 8080.56 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 201890.56 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "LG CAN"), keep order:false
+    │ └─Projection_112(Probe) | 243504.48 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 243504.48 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 243504.48 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 243504.48 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 243504.48 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 243504.48 | root |  | 
+        ├─IndexRangeScan_192(Build) | 243504.48 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 243504.48 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 243504.48 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 8 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'SM BAG') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 244120.81 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 244120.81 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 8101.01 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 8101.01 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 8101.01 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 202401.56 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "SM BAG"), keep order:false
+    │ └─Projection_112(Probe) | 244120.81 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 244120.81 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 244120.81 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 244120.81 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 244120.81 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 244120.81 | root |  | 
+        ├─IndexRangeScan_192(Build) | 244120.81 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 244120.81 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 244120.81 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 9 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'WRAP BAG') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 239193.79 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 239193.79 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 7937.51 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 7937.51 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 7937.51 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 198316.55 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "WRAP BAG"), keep order:false
+    │ └─Projection_112(Probe) | 239193.79 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 239193.79 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 239193.79 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 239193.79 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 239193.79 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 239193.79 | root |  | 
+        ├─IndexRangeScan_192(Build) | 239193.79 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 239193.79 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 239193.79 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 10 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'WRAP DRUM' or p_container = 'SM BAG' or p_container = 'WRAP JAR') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 732362.43 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 732362.43 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 24303.03 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 24303.03 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 24303.03 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "WRAP DRUM"), or(eq(tpch_sf40.part.p_container, "SM BAG"), eq(tpch_sf40.part.p_container, "WRAP JAR")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 732362.43 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 732362.43 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 732362.43 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 732362.43 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 732362.43 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 732362.43 | root |  | 
+        ├─IndexRangeScan_192(Build) | 732362.43 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 732362.43 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 732362.43 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 11 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'JUMBO BAG') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 237259.17 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 237259.17 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 7873.31 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 7873.31 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 7873.31 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 196712.54 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "JUMBO BAG"), keep order:false
+    │ └─Projection_112(Probe) | 237259.17 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 237259.17 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 237259.17 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 237259.17 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 237259.17 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 237259.17 | root |  | 
+        ├─IndexRangeScan_192(Build) | 237259.17 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 237259.17 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 237259.17 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 12 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'LG BOX') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 237171.12 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 237171.12 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 7870.39 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 7870.39 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 7870.39 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 196639.54 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "LG BOX"), keep order:false
+    │ └─Projection_112(Probe) | 237171.12 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 237171.12 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 237171.12 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 237171.12 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 237171.12 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 237171.12 | root |  | 
+        ├─IndexRangeScan_192(Build) | 237171.12 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 237171.12 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 237171.12 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 13 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'LG JAR' or p_container = 'SM BAG') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 487098.22 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 487098.22 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 16164.08 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 16164.08 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 16164.08 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "LG JAR"), eq(tpch_sf40.part.p_container, "SM BAG"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 487098.22 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 487098.22 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 487098.22 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 487098.22 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 487098.22 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 487098.22 | root |  | 
+        ├─IndexRangeScan_192(Build) | 487098.22 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 487098.22 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 487098.22 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 14 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'JUMBO BOX' or p_container = 'WRAP BOX' or p_container = 'JUMBO CASE' or p_container = 'JUMBO DRUM') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 962758.75 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 962758.75 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 31948.60 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 31948.60 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 31948.60 | mpp[tiflash] |  | or(or(eq(tpch_sf40.part.p_container, "JUMBO BOX"), eq(tpch_sf40.part.p_container, "WRAP BOX")), or(eq(tpch_sf40.part.p_container, "JUMBO CASE"), eq(tpch_sf40.part.p_container, "JUMBO DRUM")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 962758.75 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 962758.75 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 962758.75 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 962758.75 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 962758.75 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 962758.75 | root |  | 
+        ├─IndexRangeScan_192(Build) | 962758.75 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 962758.75 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 962758.75 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 15 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'JUMBO PACK') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 243065.45 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 243065.45 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 8065.99 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 8065.99 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 8065.99 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 201526.55 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "JUMBO PACK"), keep order:false
+    │ └─Projection_112(Probe) | 243065.45 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 243065.45 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 243065.45 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 243065.45 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 243065.45 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 243065.45 | root |  | 
+        ├─IndexRangeScan_192(Build) | 243065.45 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 243065.45 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 243065.45 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 16 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'JUMBO PKG') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 235059.20 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 235059.20 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 7800.31 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 7800.31 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 7800.31 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 194888.54 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "JUMBO PKG"), keep order:false
+    │ └─Projection_112(Probe) | 235059.20 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 235059.20 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 235059.20 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 235059.20 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 235059.20 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 235059.20 | root |  | 
+        ├─IndexRangeScan_192(Build) | 235059.20 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 235059.20 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 235059.20 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 17 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'LG PACK' or p_container = 'SM CAN' or p_container = 'WRAP PACK') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 726819.09 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 726819.09 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 24119.08 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 24119.08 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 24119.08 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "LG PACK"), or(eq(tpch_sf40.part.p_container, "SM CAN"), eq(tpch_sf40.part.p_container, "WRAP PACK")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 726819.09 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 726819.09 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 726819.09 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 726819.09 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 726819.09 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 726819.09 | root |  | 
+        ├─IndexRangeScan_192(Build) | 726819.09 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 726819.09 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 726819.09 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 18 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'WRAP DRUM' or p_container = 'JUMBO DRUM') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 487538.45 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 487538.45 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 16178.69 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 16178.69 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 16178.69 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "WRAP DRUM"), eq(tpch_sf40.part.p_container, "JUMBO DRUM"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 487538.45 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 487538.45 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 487538.45 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 487538.45 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 487538.45 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 487538.45 | root |  | 
+        ├─IndexRangeScan_192(Build) | 487538.45 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 487538.45 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 487538.45 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 19 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'WRAP BAG' or p_container = 'MED PKG' or p_container = 'WRAP PKG') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 719166.23 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 719166.23 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 23865.12 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 23865.12 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 23865.12 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "WRAP BAG"), or(eq(tpch_sf40.part.p_container, "MED PKG"), eq(tpch_sf40.part.p_container, "WRAP PKG")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 719166.23 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 719166.23 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 719166.23 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 719166.23 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 719166.23 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 719166.23 | root |  | 
+        ├─IndexRangeScan_192(Build) | 719166.23 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 719166.23 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 719166.23 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 20 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'JUMBO CAN') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 243856.67 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 243856.67 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 8092.25 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 8092.25 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 8092.25 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 202182.56 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "JUMBO CAN"), keep order:false
+    │ └─Projection_112(Probe) | 243856.67 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 243856.67 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 243856.67 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 243856.67 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 243856.67 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 243856.67 | root |  | 
+        ├─IndexRangeScan_192(Build) | 243856.67 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 243856.67 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 243856.67 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 21 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'MED CAN') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 236378.70 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 236378.70 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 7844.09 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 7844.09 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 7844.09 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 195982.54 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "MED CAN"), keep order:false
+    │ └─Projection_112(Probe) | 236378.70 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 236378.70 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 236378.70 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 236378.70 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 236378.70 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 236378.70 | root |  | 
+        ├─IndexRangeScan_192(Build) | 236378.70 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 236378.70 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 236378.70 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 22 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'MED CAN' or p_container = 'LG JAR' or p_container = 'JUMBO CASE' or p_container = 'JUMBO DRUM') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 966014.08 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 966014.08 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 32056.63 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 32056.63 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 32056.63 | mpp[tiflash] |  | or(or(eq(tpch_sf40.part.p_container, "MED CAN"), eq(tpch_sf40.part.p_container, "LG JAR")), or(eq(tpch_sf40.part.p_container, "JUMBO CASE"), eq(tpch_sf40.part.p_container, "JUMBO DRUM")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 966014.08 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 966014.08 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 966014.08 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 966014.08 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 966014.08 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 966014.08 | root |  | 
+        ├─IndexRangeScan_192(Build) | 966014.08 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 966014.08 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 966014.08 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 23 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'JUMBO JAR' or p_container = 'SM BAG' or p_container = 'WRAP BAG' or p_container = 'SM JAR') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 962670.71 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 962670.71 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 31945.68 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 31945.68 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 31945.68 | mpp[tiflash] |  | or(or(eq(tpch_sf40.part.p_container, "JUMBO JAR"), eq(tpch_sf40.part.p_container, "SM BAG")), or(eq(tpch_sf40.part.p_container, "WRAP BAG"), eq(tpch_sf40.part.p_container, "SM JAR")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 962670.71 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 962670.71 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 962670.71 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 962670.71 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 962670.71 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 962670.71 | root |  | 
+        ├─IndexRangeScan_192(Build) | 962670.71 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 962670.71 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 962670.71 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 24 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'SM CAN' or p_container = 'JUMBO BOX' or p_container = 'MED DRUM') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 723212.77 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 723212.77 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 23999.41 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 23999.41 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 23999.41 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "SM CAN"), or(eq(tpch_sf40.part.p_container, "JUMBO BOX"), eq(tpch_sf40.part.p_container, "MED DRUM")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 723212.77 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 723212.77 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 723212.77 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 723212.77 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 723212.77 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 723212.77 | root |  | 
+        ├─IndexRangeScan_192(Build) | 723212.77 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 723212.77 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 723212.77 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 25 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'WRAP PACK' or p_container = 'JUMBO CASE') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 485865.56 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 485865.56 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 16123.17 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 16123.17 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 16123.17 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "WRAP PACK"), eq(tpch_sf40.part.p_container, "JUMBO CASE"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 485865.56 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 485865.56 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 485865.56 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 485865.56 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 485865.56 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 485865.56 | root |  | 
+        ├─IndexRangeScan_192(Build) | 485865.56 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 485865.56 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 485865.56 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 26 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'JUMBO PACK' or p_container = 'JUMBO JAR' or p_container = 'JUMBO DRUM' or p_container = 'MED JAR') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 966542.37 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 966542.37 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 32074.16 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 32074.16 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 32074.16 | mpp[tiflash] |  | or(or(eq(tpch_sf40.part.p_container, "JUMBO PACK"), eq(tpch_sf40.part.p_container, "JUMBO JAR")), or(eq(tpch_sf40.part.p_container, "JUMBO DRUM"), eq(tpch_sf40.part.p_container, "MED JAR")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 966542.37 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 966542.37 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 966542.37 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 966542.37 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 966542.37 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 966542.37 | root |  | 
+        ├─IndexRangeScan_192(Build) | 966542.37 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 966542.37 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 966542.37 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 27 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'WRAP BOX') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 240953.53 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 240953.53 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 7995.91 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 7995.91 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 7995.91 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 199775.55 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "WRAP BOX"), keep order:false
+    │ └─Projection_112(Probe) | 240953.53 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 240953.53 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 240953.53 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 240953.53 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 240953.53 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 240953.53 | root |  | 
+        ├─IndexRangeScan_192(Build) | 240953.53 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 240953.53 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 240953.53 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 28 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'LG PKG') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 246495.67 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 246495.67 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 8179.82 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 8179.82 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 8179.82 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 204370.56 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "LG PKG"), keep order:false
+    │ └─Projection_112(Probe) | 246495.67 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 246495.67 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 246495.67 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 246495.67 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 246495.67 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 246495.67 | root |  | 
+        ├─IndexRangeScan_192(Build) | 246495.67 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 246495.67 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 246495.67 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 29 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'WRAP JAR' or p_container = 'MED BOX' or p_container = 'SM CAN') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 732625.37 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 732625.37 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 24311.76 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 24311.76 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 24311.76 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "WRAP JAR"), or(eq(tpch_sf40.part.p_container, "MED BOX"), eq(tpch_sf40.part.p_container, "SM CAN")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 732625.37 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 732625.37 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 732625.37 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 732625.37 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 732625.37 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 732625.37 | root |  | 
+        ├─IndexRangeScan_192(Build) | 732625.37 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 732625.37 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 732625.37 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 30 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'SM PACK') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 238490.62 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 238490.62 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 7914.18 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 7914.18 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 7914.18 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 197733.54 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "SM PACK"), keep order:false
+    │ └─Projection_112(Probe) | 238490.62 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 238490.62 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 238490.62 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 238490.62 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 238490.62 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 238490.62 | root |  | 
+        ├─IndexRangeScan_192(Build) | 238490.62 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 238490.62 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 238490.62 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 31 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'SM PACK' or p_container = 'WRAP JAR') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 480939.74 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 480939.74 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 15959.71 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 15959.71 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 15959.71 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "SM PACK"), eq(tpch_sf40.part.p_container, "WRAP JAR"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 480939.74 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 480939.74 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 480939.74 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 480939.74 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 480939.74 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 480939.74 | root |  | 
+        ├─IndexRangeScan_192(Build) | 480939.74 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 480939.74 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 480939.74 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 32 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'MED JAR' or p_container = 'MED PKG' or p_container = 'LG PKG' or p_container = 'MED DRUM') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 963815.32 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 963815.32 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 31983.67 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 31983.67 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 31983.67 | mpp[tiflash] |  | or(or(eq(tpch_sf40.part.p_container, "MED JAR"), eq(tpch_sf40.part.p_container, "MED PKG")), or(eq(tpch_sf40.part.p_container, "LG PKG"), eq(tpch_sf40.part.p_container, "MED DRUM")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 963815.32 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 963815.32 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 963815.32 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 963815.32 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 963815.32 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 963815.32 | root |  | 
+        ├─IndexRangeScan_192(Build) | 963815.32 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 963815.32 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 963815.32 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 33 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'MED DRUM') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 240250.36 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 240250.36 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 7972.57 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 7972.57 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 7972.57 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 199192.55 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "MED DRUM"), keep order:false
+    │ └─Projection_112(Probe) | 240250.36 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 240250.36 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 240250.36 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 240250.36 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 240250.36 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 240250.36 | root |  | 
+        ├─IndexRangeScan_192(Build) | 240250.36 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 240250.36 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 240250.36 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 34 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'MED CAN') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 236378.70 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 236378.70 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 7844.09 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 7844.09 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 7844.09 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 195982.54 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "MED CAN"), keep order:false
+    │ └─Projection_112(Probe) | 236378.70 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 236378.70 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 236378.70 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 236378.70 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 236378.70 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 236378.70 | root |  | 
+        ├─IndexRangeScan_192(Build) | 236378.70 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 236378.70 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 236378.70 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 35 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'LG CAN' or p_container = 'MED JAR') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 481730.96 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 481730.96 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 15985.97 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 15985.97 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 15985.97 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "LG CAN"), eq(tpch_sf40.part.p_container, "MED JAR"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 481730.96 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 481730.96 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 481730.96 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 481730.96 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 481730.96 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 481730.96 | root |  | 
+        ├─IndexRangeScan_192(Build) | 481730.96 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 481730.96 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 481730.96 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 36 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'SM BOX' or p_container = 'WRAP JAR' or p_container = 'MED PKG' or p_container = 'WRAP PACK') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 956953.68 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 956953.68 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 31755.97 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 31755.97 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 31755.97 | mpp[tiflash] |  | or(or(eq(tpch_sf40.part.p_container, "SM BOX"), eq(tpch_sf40.part.p_container, "WRAP JAR")), or(eq(tpch_sf40.part.p_container, "MED PKG"), eq(tpch_sf40.part.p_container, "WRAP PACK")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 956953.68 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 956953.68 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 956953.68 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 956953.68 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 956953.68 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 956953.68 | root |  | 
+        ├─IndexRangeScan_192(Build) | 956953.68 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 956953.68 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 956953.68 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 37 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'MED CASE' or p_container = 'WRAP CASE') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 492112.08 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 492112.08 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 16330.46 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 16330.46 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 16330.46 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "MED CASE"), eq(tpch_sf40.part.p_container, "WRAP CASE"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 492112.08 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 492112.08 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 492112.08 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 492112.08 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 492112.08 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 492112.08 | root |  | 
+        ├─IndexRangeScan_192(Build) | 492112.08 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 492112.08 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 492112.08 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 38 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'WRAP BOX') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 240953.53 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 240953.53 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 7995.91 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 7995.91 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 7995.91 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 199775.55 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "WRAP BOX"), keep order:false
+    │ └─Projection_112(Probe) | 240953.53 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 240953.53 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 240953.53 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 240953.53 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 240953.53 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 240953.53 | root |  | 
+        ├─IndexRangeScan_192(Build) | 240953.53 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 240953.53 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 240953.53 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 39 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'WRAP DRUM' or p_container = 'JUMBO PKG' or p_container = 'MED CAN' or p_container = 'SM JAR') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 953082.02 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 953082.02 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 31627.49 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 31627.49 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 31627.49 | mpp[tiflash] |  | or(or(eq(tpch_sf40.part.p_container, "WRAP DRUM"), eq(tpch_sf40.part.p_container, "JUMBO PKG")), or(eq(tpch_sf40.part.p_container, "MED CAN"), eq(tpch_sf40.part.p_container, "SM JAR")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 953082.02 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 953082.02 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 953082.02 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 953082.02 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 953082.02 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 953082.02 | root |  | 
+        ├─IndexRangeScan_192(Build) | 953082.02 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 953082.02 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 953082.02 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 40 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'JUMBO BOX') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 235147.24 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 235147.24 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 7803.23 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 7803.23 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 7803.23 | mpp[tiflash] |  | eq(tpch_sf40.part.p_brand, "Brand#24")
+    │ │     └─TableFullScan_141 | 194961.54 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_container, "JUMBO BOX"), keep order:false
+    │ └─Projection_112(Probe) | 235147.24 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 235147.24 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 235147.24 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 235147.24 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 235147.24 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 235147.24 | root |  | 
+        ├─IndexRangeScan_192(Build) | 235147.24 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 235147.24 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 235147.24 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 41 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'SM DRUM' or p_container = 'LG PKG' or p_container = 'SM BOX') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 725852.98 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 725852.98 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 24087.02 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 24087.02 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 24087.02 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "SM DRUM"), or(eq(tpch_sf40.part.p_container, "LG PKG"), eq(tpch_sf40.part.p_container, "SM BOX")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 725852.98 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 725852.98 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 725852.98 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 725852.98 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 725852.98 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 725852.98 | root |  | 
+        ├─IndexRangeScan_192(Build) | 725852.98 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 725852.98 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 725852.98 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 42 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'MED JAR' or p_container = 'MED PKG' or p_container = 'LG BAG' or p_container = 'SM PKG') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 964255.56 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 964255.56 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 31998.27 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 31998.27 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 31998.27 | mpp[tiflash] |  | or(or(eq(tpch_sf40.part.p_container, "MED JAR"), eq(tpch_sf40.part.p_container, "MED PKG")), or(eq(tpch_sf40.part.p_container, "LG BAG"), eq(tpch_sf40.part.p_container, "SM PKG")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 964255.56 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 964255.56 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 964255.56 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 964255.56 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 964255.56 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 964255.56 | root |  | 
+        ├─IndexRangeScan_192(Build) | 964255.56 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 964255.56 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 964255.56 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 43 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'WRAP CAN' or p_container = 'JUMBO BAG') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 482523.39 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 482523.39 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 16012.27 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 16012.27 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 16012.27 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "WRAP CAN"), eq(tpch_sf40.part.p_container, "JUMBO BAG"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 482523.39 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 482523.39 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 482523.39 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 482523.39 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 482523.39 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 482523.39 | root |  | 
+        ├─IndexRangeScan_192(Build) | 482523.39 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 482523.39 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 482523.39 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 44 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'LG PACK' or p_container = 'MED DRUM') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 478300.74 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 478300.74 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 15872.14 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 15872.14 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 15872.14 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "LG PACK"), eq(tpch_sf40.part.p_container, "MED DRUM"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 478300.74 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 478300.74 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 478300.74 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 478300.74 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 478300.74 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 478300.74 | root |  | 
+        ├─IndexRangeScan_192(Build) | 478300.74 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 478300.74 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 478300.74 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 45 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'SM BAG' or p_container = 'WRAP DRUM') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 489913.31 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 489913.31 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 16257.50 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 16257.50 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 16257.50 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "SM BAG"), eq(tpch_sf40.part.p_container, "WRAP DRUM"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 489913.31 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 489913.31 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 489913.31 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 489913.31 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 489913.31 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 489913.31 | root |  | 
+        ├─IndexRangeScan_192(Build) | 489913.31 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 489913.31 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 489913.31 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 46 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'LG BAG' or p_container = 'LG BOX') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 485602.62 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 485602.62 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 16114.45 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 16114.45 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 16114.45 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "LG BAG"), eq(tpch_sf40.part.p_container, "LG BOX"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 485602.62 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 485602.62 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 485602.62 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 485602.62 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 485602.62 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 485602.62 | root |  | 
+        ├─IndexRangeScan_192(Build) | 485602.62 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 485602.62 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 485602.62 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 47 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'SM DRUM' or p_container = 'LG BOX' or p_container = 'SM CAN' or p_container = 'MED BAG') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 969885.74 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 969885.74 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 32185.11 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 32185.11 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 32185.11 | mpp[tiflash] |  | or(or(eq(tpch_sf40.part.p_container, "SM DRUM"), eq(tpch_sf40.part.p_container, "LG BOX")), or(eq(tpch_sf40.part.p_container, "SM CAN"), eq(tpch_sf40.part.p_container, "MED BAG")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 969885.74 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 969885.74 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 969885.74 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 969885.74 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 969885.74 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 969885.74 | root |  | 
+        ├─IndexRangeScan_192(Build) | 969885.74 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 969885.74 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 969885.74 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 48 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'LG DRUM' or p_container = 'WRAP CASE') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 475309.56 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 475309.56 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 15772.88 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 15772.88 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 15772.88 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "LG DRUM"), eq(tpch_sf40.part.p_container, "WRAP CASE"))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 475309.56 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 475309.56 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 475309.56 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 475309.56 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 475309.56 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 475309.56 | root |  | 
+        ├─IndexRangeScan_192(Build) | 475309.56 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 475309.56 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 475309.56 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 49 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'SM BOX' or p_container = 'JUMBO JAR' or p_container = 'WRAP CAN') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 723476.91 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 723476.91 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 24008.17 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 24008.17 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 24008.17 | mpp[tiflash] |  | or(eq(tpch_sf40.part.p_container, "SM BOX"), or(eq(tpch_sf40.part.p_container, "JUMBO JAR"), eq(tpch_sf40.part.p_container, "WRAP CAN")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 723476.91 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 723476.91 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 723476.91 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 723476.91 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 723476.91 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 723476.91 | root |  | 
+        ├─IndexRangeScan_192(Build) | 723476.91 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 723476.91 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 723476.91 | cop[tikv] | table:lineitem | keep order:false
+
+
+--- Line 50 ---
+select sum(l_extendedprice) / 7.0 as avg_yearly from lineitem, part where p_partkey = l_partkey and p_brand = 'Brand#24' and (p_container = 'WRAP DRUM' or p_container = 'WRAP PKG' or p_container = 'WRAP BOX' or p_container = 'LG PKG') and l_quantity < ( select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey );
+
+Execution Plan:
+Projection_17 | 1.00 | root |  | div(Column#44, 7.0)->Column#45
+└─StreamAgg_24 | 1.00 | root |  | funcs:sum(tpch_sf40.lineitem.l_extendedprice)->Column#44
+  └─IndexJoin_197 | 974371.32 | root |  | inner join, inner:HashAgg_195, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey), other cond:lt(tpch_sf40.lineitem.l_quantity, mul(0.2, Column#42))
+    ├─IndexHashJoin_115(Build) | 974371.32 | root |  | inner join, inner:Projection_112, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+    │ ├─TableReader_144(Build) | 32333.96 | root |  | MppVersion: 2, data:ExchangeSender_143
+    │ │ └─ExchangeSender_143 | 32333.96 | mpp[tiflash] |  | ExchangeType: PassThrough
+    │ │   └─Selection_142 | 32333.96 | mpp[tiflash] |  | or(or(eq(tpch_sf40.part.p_container, "WRAP DRUM"), eq(tpch_sf40.part.p_container, "WRAP PKG")), or(eq(tpch_sf40.part.p_container, "WRAP BOX"), eq(tpch_sf40.part.p_container, "LG PKG")))
+    │ │     └─TableFullScan_141 | 320195.60 | mpp[tiflash] | table:part | pushed down filter:eq(tpch_sf40.part.p_brand, "Brand#24"), keep order:false
+    │ └─Projection_112(Probe) | 974371.32 | root |  | tpch_sf40.lineitem.l_partkey, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice
+    │   └─IndexLookUp_111 | 974371.32 | root |  | 
+    │     ├─IndexRangeScan_109(Build) | 974371.32 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+    │     └─TableRowIDScan_110(Probe) | 974371.32 | cop[tikv] | table:lineitem | keep order:false
+    └─HashAgg_195(Probe) | 974371.32 | root |  | group by:tpch_sf40.lineitem.l_partkey, funcs:avg(Column#85, Column#86)->Column#42, funcs:firstrow(tpch_sf40.lineitem.l_partkey)->tpch_sf40.lineitem.l_partkey
+      └─IndexLookUp_196 | 974371.32 | root |  | 
+        ├─IndexRangeScan_192(Build) | 974371.32 | cop[tikv] | table:lineitem, index:idx_lineitem_fk2(l_partkey, l_suppkey) | range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+        └─HashAgg_194(Probe) | 974371.32 | cop[tikv] |  | group by:tpch_sf40.lineitem.l_partkey, funcs:count(tpch_sf40.lineitem.l_quantity)->Column#85, funcs:sum(tpch_sf40.lineitem.l_quantity)->Column#86
+          └─TableRowIDScan_193 | 974371.32 | cop[tikv] | table:lineitem | keep order:false
+
+

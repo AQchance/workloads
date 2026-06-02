@@ -1,0 +1,31 @@
+-- Query: 913
+-- Execution time: .106896447s
+
+id	estRows	task	access object	operator info
+Sort_39	23371780.39	root		tpch_sf40.orders.o_orderdate:desc, tpch_sf40.orders.o_orderkey
+└─TableReader_221	23371780.39	root		MppVersion: 2, data:ExchangeSender_220
+  └─ExchangeSender_220	23371780.39	mpp[tiflash]		ExchangeType: PassThrough
+    └─Projection_42	23371780.39	mpp[tiflash]		tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_orderdate, tpch_sf40.customer.c_name, coalesce(Column#91, 0)->Column#93, coalesce(Column#92, 0)->Column#94, case(isnull(Column#91), No Items, gt(Column#92, 5), High Volume, Low Volume)->Column#95
+      └─Projection_219	23371780.39	mpp[tiflash]		tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_orderdate, tpch_sf40.customer.c_name, Column#91, Column#92
+        └─HashJoin_218	23371780.39	mpp[tiflash]		left outer join, equal:[eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)]
+          ├─Projection_89(Build)	9061538.83	mpp[tiflash]		Column#91, Column#92, tpch_sf40.lineitem.l_orderkey
+          │ └─HashAgg_90	9061538.83	mpp[tiflash]		group by:tpch_sf40.lineitem.l_orderkey, funcs:sum(Column#105)->Column#91, funcs:sum(Column#106)->Column#92, funcs:firstrow(tpch_sf40.lineitem.l_orderkey)->tpch_sf40.lineitem.l_orderkey, stream_count: 2
+          │   └─ExchangeReceiver_92	9061538.83	mpp[tiflash]		stream_count: 2
+          │     └─ExchangeSender_91	9061538.83	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_orderkey, collate: binary], stream_count: 2
+          │       └─HashAgg_79	9061538.83	mpp[tiflash]		group by:Column#130, funcs:sum(Column#129)->Column#105, funcs:count(1)->Column#106
+          │         └─Projection_224	36503281.15	mpp[tiflash]		mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#129, tpch_sf40.lineitem.l_orderkey->Column#130
+          │           └─TableFullScan_87	36503281.15	mpp[tiflash]	table:l	pushed down filter:ge(tpch_sf40.lineitem.l_shipdate, 1997-01-01 00:00:00.000000), lt(tpch_sf40.lineitem.l_shipdate, 1997-12-31 00:00:00.000000), keep order:false
+          └─ExchangeReceiver_77(Probe)	23371780.39	mpp[tiflash]		
+            └─ExchangeSender_76	23371780.39	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderkey, collate: binary]
+              └─Selection_62	23371780.39	mpp[tiflash]		eq(Column#66, 1)
+                └─Window_63	29214725.49	mpp[tiflash]		row_number()->Column#66 over(partition by tpch_sf40.orders.o_custkey order by tpch_sf40.orders.o_orderdate desc rows between current row and current row)
+                  └─Sort_75	29214725.49	mpp[tiflash]		tpch_sf40.orders.o_custkey, tpch_sf40.orders.o_orderdate:desc
+                    └─Projection_65	29214725.49	mpp[tiflash]		tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_custkey, tpch_sf40.orders.o_orderdate, tpch_sf40.customer.c_name
+                      └─Projection_74	29214725.49	mpp[tiflash]		tpch_sf40.customer.c_name, tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_custkey, tpch_sf40.orders.o_orderdate
+                        └─HashJoin_66	29214725.49	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                          ├─ExchangeReceiver_69(Build)	6000000.00	mpp[tiflash]		stream_count: 2
+                          │ └─ExchangeSender_68	6000000.00	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                          │   └─TableFullScan_67	6000000.00	mpp[tiflash]	table:c	keep order:false
+                          └─ExchangeReceiver_73(Probe)	29214725.49	mpp[tiflash]		
+                            └─ExchangeSender_72	29214725.49	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                              └─TableFullScan_70	29214725.49	mpp[tiflash]	table:o	pushed down filter:eq(tpch_sf40.orders.o_orderstatus, "F"), keep order:false

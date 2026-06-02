@@ -1,0 +1,26 @@
+-- Query: 11614
+-- Execution time: .106266407s
+
+id	estRows	task	access object	operator info
+Projection_21	10.00	root		tpch_sf40.nation.n_name, Column#38
+└─TopN_24	10.00	root		Column#38:desc, offset:0, count:10
+  └─HashAgg_31	25.00	root		group by:Column#46, funcs:sum(Column#45)->Column#38, funcs:firstrow(Column#46)->tpch_sf40.nation.n_name
+    └─Projection_202	3112207.61	root		mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#45, tpch_sf40.nation.n_name->Column#46
+      └─Projection_35	3112207.61	root		tpch_sf40.lineitem.l_extendedprice, tpch_sf40.lineitem.l_discount, tpch_sf40.nation.n_name
+        └─IndexJoin_46	3112207.61	root		inner join, inner:TableReader_42, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+          ├─TableReader_96(Build)	772571.38	root		MppVersion: 2, data:ExchangeSender_95
+          │ └─ExchangeSender_95	772571.38	mpp[tiflash]		ExchangeType: PassThrough
+          │   └─Projection_94	772571.38	mpp[tiflash]		tpch_sf40.nation.n_name, tpch_sf40.orders.o_orderkey
+          │     └─HashJoin_76	772571.38	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)]
+          │       ├─ExchangeReceiver_63(Build)	772571.38	mpp[tiflash]		
+          │       │ └─ExchangeSender_62	772571.38	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+          │       │   └─TableFullScan_60	772571.38	mpp[tiflash]	table:o	pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1997-01-01), lt(tpch_sf40.orders.o_orderdate, 1997-02-01), keep order:false
+          │       └─Projection_59(Probe)	5999987.00	mpp[tiflash]		tpch_sf40.nation.n_name, tpch_sf40.customer.c_custkey
+          │         └─HashJoin_54	5999987.00	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.nation.n_nationkey, tpch_sf40.customer.c_nationkey)]
+          │           ├─ExchangeReceiver_57(Build)	25.00	mpp[tiflash]		
+          │           │ └─ExchangeSender_56	25.00	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+          │           │   └─TableFullScan_55	25.00	mpp[tiflash]	table:n	keep order:false
+          │           └─TableFullScan_58(Probe)	6000000.00	mpp[tiflash]	table:c	keep order:false
+          └─TableReader_42(Probe)	111039.62	root		data:Selection_41
+            └─Selection_41	111039.62	cop[tikv]		eq(tpch_sf40.lineitem.l_shipmode, "AIR")
+              └─TableRangeScan_40	772571.38	cop[tikv]	table:l	range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false

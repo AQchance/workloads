@@ -1,0 +1,1250 @@
+--- Line 1 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%express%packages%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 2 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%express%deposits%' and o_comment not like '%special%accounts%' and o_comment not like '%pending%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%deposits%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%deposits%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%accounts%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 3 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%express%accounts%' and o_comment not like '%pending%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%accounts%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%deposits%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 4 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%unusual%packages%' and o_comment not like '%express%packages%' and o_comment not like '%express%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%deposits%", 92)), not(like(tpch_sf40.orders.o_comment, "%express%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 5 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%requests%' and o_comment not like '%unusual%accounts%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%accounts%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 6 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%accounts%' and o_comment not like '%unusual%accounts%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%accounts%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%accounts%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 7 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%unusual%requests%' and o_comment not like '%express%accounts%' and o_comment not like '%special%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%accounts%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 8 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%unusual%requests%' and o_comment not like '%special%packages%' and o_comment not like '%pending%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%deposits%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 9 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%special%packages%' and o_comment not like '%pending%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 10 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%unusual%packages%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%unusual%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 11 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%unusual%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%unusual%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 12 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 13 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%unusual%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%unusual%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 14 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%special%packages%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%special%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 15 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%requests%' and o_comment not like '%unusual%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%deposits%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 16 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%special%packages%' and o_comment not like '%express%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%deposits%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 17 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%express%requests%' and o_comment not like '%unusual%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%deposits%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 18 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%deposits%' and o_comment not like '%express%packages%' and o_comment not like '%express%accounts%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%accounts%", 92)), not(like(tpch_sf40.orders.o_comment, "%express%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%deposits%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 19 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%accounts%' and o_comment not like '%unusual%requests%' and o_comment not like '%express%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%accounts%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 20 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%express%packages%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 21 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%accounts%' and o_comment not like '%pending%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%accounts%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 22 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%special%requests%' and o_comment not like '%pending%packages%' and o_comment not like '%unusual%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%deposits%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 23 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%requests%' and o_comment not like '%special%deposits%' and o_comment not like '%special%packages%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%deposits%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 24 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%special%packages%' and o_comment not like '%pending%deposits%' and o_comment not like '%pending%packages%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%deposits%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 25 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%requests%' and o_comment not like '%pending%packages%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 26 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%requests%' and o_comment not like '%express%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 27 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%deposits%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 28 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%unusual%packages%' and o_comment not like '%special%requests%' and o_comment not like '%special%packages%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%special%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 29 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%special%accounts%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%special%accounts%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 30 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%express%packages%' and o_comment not like '%special%accounts%' and o_comment not like '%unusual%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%accounts%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 31 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%packages%' and o_comment not like '%express%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%deposits%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 32 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%unusual%accounts%' and o_comment not like '%special%packages%' and o_comment not like '%express%accounts%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%accounts%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%accounts%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 33 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%express%deposits%' and o_comment not like '%pending%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%deposits%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 34 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%requests%' and o_comment not like '%express%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 35 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%special%requests%' and o_comment not like '%express%requests%' and o_comment not like '%special%accounts%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%accounts%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 36 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%accounts%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%accounts%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 37 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%unusual%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%unusual%deposits%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 38 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%express%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%deposits%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 39 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%express%packages%' and o_comment not like '%unusual%packages%' and o_comment not like '%pending%packages%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 40 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%unusual%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%unusual%deposits%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 41 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%special%deposits%' and o_comment not like '%express%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%deposits%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 42 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%special%packages%' and o_comment not like '%unusual%accounts%' and o_comment not like '%express%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%accounts%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 43 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%express%requests%' and o_comment not like '%special%deposits%' and o_comment not like '%special%accounts%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%accounts%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%deposits%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 44 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%packages%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 45 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%special%deposits%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%special%deposits%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 46 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%deposits%' and o_comment not like '%express%packages%' and o_comment not like '%unusual%accounts%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%packages%", 92)), not(like(tpch_sf40.orders.o_comment, "%pending%deposits%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%accounts%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 47 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%accounts%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%accounts%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 48 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%pending%packages%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%pending%packages%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 49 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%express%requests%' and o_comment not like '%special%requests%' and o_comment not like '%unusual%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%express%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%special%requests%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
+--- Line 50 ---
+select c_count, count(*) as custdist from ( select c_custkey, count(o_orderkey) as c_count from customer left outer join orders on c_custkey = o_custkey and o_comment not like '%unusual%deposits%' and o_comment not like '%special%accounts%' and o_comment not like '%unusual%requests%' group by c_custkey ) as c_orders group by c_count order by custdist desc, c_count desc;
+
+Execution Plan:
+Sort_10 | 6000000.00 | root |  | Column#19:desc, Column#18:desc
+└─TableReader_150 | 6000000.00 | root |  | MppVersion: 2, data:ExchangeSender_149
+  └─ExchangeSender_149 | 6000000.00 | mpp[tiflash] |  | ExchangeType: PassThrough
+    └─Projection_13 | 6000000.00 | mpp[tiflash] |  | Column#18, Column#19
+      └─Projection_144 | 6000000.00 | mpp[tiflash] |  | Column#19, Column#18
+        └─HashAgg_142 | 6000000.00 | mpp[tiflash] |  | group by:Column#18, funcs:count(1)->Column#19, funcs:firstrow(Column#18)->Column#18, stream_count: 2
+          └─ExchangeReceiver_116 | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+            └─ExchangeSender_115 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: Column#18, collate: binary], stream_count: 2
+              └─Projection_114 | 6000000.00 | mpp[tiflash] |  | Column#18
+                └─HashAgg_112 | 6000000.00 | mpp[tiflash] |  | group by:tpch_sf40.customer.c_custkey, funcs:count(tpch_sf40.orders.o_orderkey)->Column#18
+                  └─Projection_81 | 48000000.00 | mpp[tiflash] |  | tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_orderkey
+                    └─HashJoin_79 | 48000000.00 | mpp[tiflash] |  | left outer join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      ├─ExchangeReceiver_50(Build) | 6000000.00 | mpp[tiflash] |  | stream_count: 2
+                      │ └─ExchangeSender_49 | 6000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │   └─TableFullScan_48 | 6000000.00 | mpp[tiflash] | table:customer | keep order:false
+                      └─ExchangeReceiver_54(Probe) | 48000000.00 | mpp[tiflash] |  | 
+                        └─ExchangeSender_53 | 48000000.00 | mpp[tiflash] |  | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                          └─Selection_52 | 48000000.00 | mpp[tiflash] |  | not(like(tpch_sf40.orders.o_comment, "%special%accounts%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%deposits%", 92)), not(like(tpch_sf40.orders.o_comment, "%unusual%requests%", 92))
+                            └─TableFullScan_51 | 60000000.00 | mpp[tiflash] | table:orders | pushed down filter:empty, keep order:false
+
+
