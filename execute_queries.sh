@@ -15,15 +15,19 @@
 # the script restarts TiDB via "bash tidb_start.sh" inside the container.
 
 SQL_DIR="/home/anqian/Desktop/my_lab/workloads/SQLStorm"
-QUERY_LIST="/home/anqian/Desktop/my_lab/workloads/sqlstorm_sqls.txt"
+# Query list: dynamically build from SQLStorm directory
+# This handles both old and new query IDs.
+SQL_DIR="/home/anqian/Desktop/my_lab/workloads/SQLStorm"
 RESULT_FILE="/home/anqian/Desktop/my_lab/workloads/sqlstorm_results.txt"
 ANALYZE_DIR="/home/anqian/Desktop/my_lab/workloads/explain_analyze_results"
-MIN_QUERY=8351  # skip queries below this number
+PLAN_DIR="/home/anqian/Desktop/my_lab/workloads/explain_plans"
+MIN_QUERY=25247  # start from first new query ID
 TIMEOUT_SEC=600 # 10 minutes
 
 MYSQL_BASE="docker exec tidb1 mysql -h 127.0.0.1 -P 4000 -u root -D tpch_sf40"
 
 mkdir -p "$ANALYZE_DIR"
+mkdir -p "$PLAN_DIR"
 
 # Resume: collect already-done query numbers
 declare -A DONE
@@ -34,17 +38,25 @@ if [ -f "$RESULT_FILE" ]; then
   echo "Resuming: ${#DONE[@]} queries already completed"
 fi
 
-total=$(wc -l <"$QUERY_LIST")
+# Build query list from all .sql files in SQL_DIR
+QUERY_LIST=$(ls "$SQL_DIR"/*.sql 2>/dev/null | xargs -n1 basename | sed 's/\.sql//' | sort -n | awk -v min="$MIN_QUERY" '$1 >= min')
+total=$(echo "$QUERY_LIST" | grep -c .)
 count=${#DONE[@]}
 oom_flag=0
 consecutive_errors=0
 
-echo "Starting EXPLAIN ANALYZE for $total queries (timeout=${TIMEOUT_SEC}s)..."
+echo "Starting EXPLAIN ANALYZE for $total new queries (timeout=${TIMEOUT_SEC}s)..."
 echo "EXPLAIN ANALYZE output: $ANALYZE_DIR"
 echo "Results: $RESULT_FILE"
 echo "============================================"
 
+# Write query list to temp file (avoid subshell pipe issues)
+TEMP_LIST=$(mktemp)
+echo "$QUERY_LIST" > "$TEMP_LIST"
+
 while IFS= read -r qnum; do
+  [ -z "$qnum" ] && continue
+
   count=$((count + 1))
 
   # Skip already done
@@ -52,14 +64,8 @@ while IFS= read -r qnum; do
     continue
   fi
 
-  # Skip queries below MIN_QUERY
-  if [ "$qnum" -lt "$MIN_QUERY" ]; then
-    continue
-  fi
-
   sql_file="$SQL_DIR/${qnum}.sql"
   if [ ! -f "$sql_file" ]; then
-    echo "[$count/$total] $qnum: FILE_NOT_FOUND"
     echo "$qnum error" >>"$RESULT_FILE"
     continue
   fi
@@ -137,13 +143,26 @@ while IFS= read -r qnum; do
     status="success"
     consecutive_errors=0
 
-    # Save the output
+    # Save the EXPLAIN ANALYZE output
     {
       echo "-- Query: $qnum"
       echo "-- Execution time: ${elapsed}s"
       echo
       echo "$result"
     } >"$ANALYZE_DIR/${qnum}.txt"
+
+    # Also collect EXPLAIN plan (VERBOSE format, for GNN model input)
+    if [ ! -f "$PLAN_DIR/${qnum}.txt" ]; then
+      explain_result=$(docker exec tidb1 mysql -h 127.0.0.1 -P 4000 -u root -D tpch_sf40 --batch -e "EXPLAIN FORMAT='verbose' $sql" 2>&1)
+      if [ $? -eq 0 ] && ! echo "$explain_result" | grep -qi "ERROR"; then
+        {
+          echo "-- Query: $qnum"
+          echo "-- Execution time: ${elapsed}s"
+          echo
+          echo "$explain_result"
+        } >"$PLAN_DIR/${qnum}.txt"
+      fi
+    fi
 
     echo "[$count/$total] $qnum: OK (${elapsed}s)"
   fi
@@ -159,7 +178,8 @@ while IFS= read -r qnum; do
     echo "--- Progress: $count/$total | success=$success_n timeout=$timeout_n OOM=$oom_n error=$error_n ---"
   fi
 
-done <"$QUERY_LIST"
+done <"$TEMP_LIST"
+rm -f "$TEMP_LIST"
 
 # Final summary
 success_n=$(grep -c " success$" "$RESULT_FILE" 2>/dev/null || echo 0)

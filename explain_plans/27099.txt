@@ -1,0 +1,35 @@
+-- Query: 27099
+-- Source: SQLStorm v1.0 query 6883
+
+id	estRows	estCost	task	access object	operator info
+Projection_91	10.00	14051850779.06	root		tpch_sf40.supplier.s_name, tpch_sf40.part.p_name, tpch_sf40.partsupp.ps_supplycost, tpch_sf40.partsupp.ps_availqty, tpch_sf40.customer.c_name, Column#174
+└─TopN_94	10.00	14051850764.09	root		Column#174:desc, tpch_sf40.partsupp.ps_supplycost, offset:0, count:10
+  └─Projection_99	32379725.78	8684450530.02	root		tpch_sf40.supplier.s_name, tpch_sf40.partsupp.ps_availqty, tpch_sf40.partsupp.ps_supplycost, Column#174, tpch_sf40.customer.c_name, tpch_sf40.part.p_name
+    └─HashJoin_100	32379725.78	8635978080.53	root		CARTESIAN inner join
+      ├─HashAgg_236(Build)	1.00	25009.67	root		group by:Column#194, Column#195, funcs:sum(Column#193)->Column#174, funcs:firstrow(Column#194)->tpch_sf40.customer.c_name
+      │ └─Projection_293	61.46	17297.60	root		mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#193, tpch_sf40.customer.c_name->Column#194, tpch_sf40.customer.c_custkey->Column#195
+      │   └─HashJoin_238	61.46	15733.50	root		CARTESIAN inner join
+      │     ├─Point_Get_239(Build)	1.00	153.45	root	table:customer	handle:5026006
+      │     └─IndexHashJoin_250(Probe)	61.46	12491.97	root		inner join, inner:TableReader_245, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      │       ├─IndexReader_285(Build)	15.26	2519.05	root		index:IndexRangeScan_284
+      │       │ └─IndexRangeScan_284	15.26	3104.76	cop[tikv]	table:o, index:idx_orders_fk1(o_custkey)	range:[5026006,5026006], keep order:false
+      │       └─TableReader_245(Probe)	15.26	340.80	root		data:TableRangeScan_244
+      │         └─TableRangeScan_244	15.26	333.12	cop[tikv]	table:ol	range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+      └─HashJoin_114(Probe)	32379725.78	7828077352.83	root		inner join, equal:[eq(tpch_sf40.part.p_partkey, tpch_sf40.part.p_partkey)]
+        ├─TableReader_235(Build)	8000000.00	729185100.08	root		MppVersion: 2, data:ExchangeSender_234
+        │ └─ExchangeSender_234	8000000.00	531378200.15	mpp[tiflash]		ExchangeType: PassThrough
+        │   └─TableFullScan_233	8000000.00	531378200.15	mpp[tiflash]	table:p	keep order:false
+        └─TableReader_176(Probe)	32236736.91	4607605584.05	root		MppVersion: 2, data:ExchangeSender_175
+          └─ExchangeSender_175	32236736.91	3470624651.11	mpp[tiflash]		ExchangeType: PassThrough
+            └─Projection_174	32236736.91	3470624651.11	mpp[tiflash]		tpch_sf40.supplier.s_name, tpch_sf40.partsupp.ps_availqty, tpch_sf40.partsupp.ps_supplycost, tpch_sf40.part.p_partkey
+              └─HashJoin_159	32236736.91	3469077287.74	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.partsupp.ps_partkey, tpch_sf40.part.p_partkey)]
+                ├─ExchangeReceiver_126(Build)	8000000.00	755664000.00	mpp[tiflash]		
+                │ └─ExchangeSender_125	8000000.00	371664000.00	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+                │   └─TableFullScan_124	8000000.00	371664000.00	mpp[tiflash]	table:p	keep order:false
+                └─Projection_123(Probe)	32094379.48	2647128947.24	mpp[tiflash]		tpch_sf40.supplier.s_name, tpch_sf40.partsupp.ps_partkey, tpch_sf40.partsupp.ps_availqty, tpch_sf40.partsupp.ps_supplycost
+                  └─HashJoin_117	32094379.48	2645588417.03	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_suppkey)]
+                    ├─ExchangeReceiver_120(Build)	400000.00	71593247.67	mpp[tiflash]		
+                    │ └─ExchangeSender_119	400000.00	25093247.67	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+                    │   └─TableFullScan_118	400000.00	25093247.67	mpp[tiflash]	table:s	keep order:false
+                    └─Selection_122(Probe)	31996812.56	2521901935.92	mpp[tiflash]		gt(tpch_sf40.partsupp.ps_availqty, 0)
+                      └─TableFullScan_121	32000000.00	2445101935.92	mpp[tiflash]	table:ps	pushed down filter:empty, keep order:false

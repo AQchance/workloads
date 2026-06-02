@@ -1,13 +1,13 @@
 """
-Train PlanGNN with NDV-based memory features.
+Train PlanGNN with NDV-based memory features + distributed topology features.
 
-Adds 3 per-node features from column statistics:
-  - join_mem_log: log(1 + estimated_hash_table_bytes) for JOIN nodes
-  - agg_mem_log:  log(1 + estimated_agg_memory) for AGG nodes
-  - sort_mem_log: log(1 + estimated_sort_memory) for SORT nodes
+Node features (20 dims):
+  13 original + 3 NDV (join_mem_log, agg_mem_log, sort_mem_log)
+  + 4 distributed (engine_type_id, table_skew_log, n_tiflash_instances, column_corr)
 
-These features are computed at parse time from TiDB column NDV statistics.
-Total node features: 13 (original) + 3 (NDV) = 16
+Edge features (5 dims): 4 original + cross_engine flag
+
+Global skip (16 dims): 9 scalar sums + n_nodes + 3 dist sums + 3 engine counts
 """
 
 import os, sys, re, math, json, argparse
@@ -24,7 +24,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from model import PlanGNN
 
 # ─── Constants ───
-NODE_RAW_DIM = 16  # 13 original + 3 NDV-based
+NODE_RAW_DIM = 20  # 13 base + 3 NDV + 4 distributed
+EDGE_RAW_DIM = 5   # 4 base + cross_engine
+
+N_LOCATIONS = 3
 
 # ─── Operator mappings ───
 OPERATOR_CLASS_MAP = {
@@ -39,13 +42,42 @@ OPERATOR_CLASS_MAP = {
 LOCATION_MAP = {"root": 0, "mpp[tiflash]": 1, "cop[tikv]": 2, "tiflash": 1}
 JOIN_TYPE_MAP = {"inner": 0, "anti": 1, "semi": 2, "left": 3, "right": 4, "none": 5}
 EXCHANGE_TYPE_MAP = {"HashPartition": 0, "Broadcast": 1, "PassThrough": 2, "none": 3}
+ENGINE_TYPE_MAP = {"tidb_server": 0, "tikv": 1, "tiflash": 2}
+
+
+def _engine_type_from_task(task_str: str) -> int:
+    """0=TiDB_Server, 1=TiKV, 2=TiFlash."""
+    t = task_str.strip().lower()
+    if "tiflash" in t: return 2
+    if "tikv" in t: return 1
+    return 0
+
+
+def _resolve_table(access_obj: str, op_info: str, aliases: dict) -> Optional[str]:
+    """Extract and resolve table name from EXPLAIN output."""
+    t = None
+    if access_obj:
+        m = re.search(r'table:(\w+(?:\.\w+)?)', access_obj)
+        if m:
+            raw = m.group(1)
+            t = raw.split('.')[-1] if '.' in raw else raw
+    if not t and op_info:
+        m = re.search(r'tpch_sf40\.(\w+)\.', op_info)
+        if m: t = m.group(1)
+    if t:
+        t = t.strip().lower()
+        return aliases.get(t, t)
+    return None
 
 
 def load_ndv_cache(path: str) -> dict:
     with open(path) as f:
-        raw = json.load(f)
-    # Convert JSON keys back; JSON doesn't have native defaultdict-like behavior
-    return raw
+        return json.load(f)
+
+
+def load_dist_cache(path: str) -> dict:
+    with open(path) as f:
+        return json.load(f)
 
 
 def parse_join_columns(op_info: str) -> list:
@@ -61,9 +93,8 @@ def parse_group_columns(op_info: str) -> list:
     return [f"{t}.{c}" for t, c in re.findall(r'tpch_sf40\.(\w+)\.(\w+)', m.group(1))]
 
 
-def compute_ndv_features(plan_text: str, ndv_cache: dict) -> list:
+def compute_ndv_features(lines: list, ndv_cache: dict) -> list:
     """Compute per-node (join_mem_log, agg_mem_log, sort_mem_log)."""
-    lines = [l for l in plan_text.strip().split('\n') if '\t' in l and not l.startswith('--')]
     results = []
     for line in lines:
         stripped = line.lstrip(' │├└─')
@@ -82,7 +113,6 @@ def compute_ndv_features(plan_text: str, ndv_cache: dict) -> list:
         op_name = re.sub(r'^[│├└─\s]+', '', raw_id)
         op_name = re.sub(r'\(Build\)|\(Probe\)', '', op_name).strip()
         op_name = re.sub(r'_\d+$', '', op_name)
-        is_build = '(Build)' in raw_id
 
         join_mem, agg_mem, sort_mem = 0.0, 0.0, 0.0
 
@@ -124,16 +154,21 @@ def compute_ndv_features(plan_text: str, ndv_cache: dict) -> list:
     return results
 
 
-def parse_plan(plan_text: str, ndv_cache: dict) -> Optional[Data]:
-    """Parse EXPLAIN plan into PyG Data with NDV features."""
+def parse_plan(plan_text: str, ndv_cache: dict,
+               dist_cache: Optional[dict] = None) -> Optional[Data]:
+    """Parse EXPLAIN plan into PyG Data with NDV + distributed features."""
     lines = [l for l in plan_text.strip().split('\n') if '\t' in l and not l.startswith('--')]
     if not lines:
         return None
 
-    ndv_feats = compute_ndv_features(plan_text, ndv_cache)
+    ndv_feats = compute_ndv_features(lines, ndv_cache)
     assert len(ndv_feats) == len(lines), f"NDV feat count mismatch: {len(ndv_feats)} vs {len(lines)}"
 
-    nodes, indent_stack, node_raw_ids = [], [], []
+    aliases = dist_cache.get("table_aliases", {}) if dist_cache else {}
+    table_skew = dist_cache.get("table_skew", {}) if dist_cache else {}
+    col_stats = dist_cache.get("column_stats", {}) if dist_cache else {}
+
+    nodes, indent_stack = [], []
     for idx, line in enumerate(lines):
         stripped = line.lstrip(' │├└─')
         depth = (len(line) - len(stripped)) // 2
@@ -144,6 +179,7 @@ def parse_plan(plan_text: str, ndv_cache: dict) -> Optional[Data]:
         raw_id = parts[0].strip()
         est_rows_str = parts[1].strip()
         location_str = parts[2].strip()
+        access_obj = parts[3].strip() if len(parts) > 3 else ""
         op_info = parts[4].strip() if len(parts) > 4 else ""
 
         op_name = re.sub(r'^[│├└─\s]+', '', raw_id)
@@ -155,26 +191,48 @@ def parse_plan(plan_text: str, ndv_cache: dict) -> Optional[Data]:
         except ValueError: est_rows = 1.0
 
         loc_id = LOCATION_MAP.get(location_str, 0)
+        eng_id = _engine_type_from_task(location_str)
         stream = int(re.search(r'stream_count:\s*(\d+)', op_info).group(1)) if 'stream_count' in op_info else 1
-        jt = JOIN_TYPE_MAP.get((re.search(r'(inner|anti|semi|left|right)\s+join', op_info, re.I) or [None, 'none'])[1].lower(), 5)
-        et = EXCHANGE_TYPE_MAP.get((re.search(r'ExchangeType:\s*(\w+)', op_info) or [None, 'none'])[1], 3)
+        jt = JOIN_TYPE_MAP.get(
+            (re.search(r'(inner|anti|semi|left|right)\s+join', op_info, re.I) or [None, 'none'])[1].lower(), 5)
+        et = EXCHANGE_TYPE_MAP.get(
+            (re.search(r'ExchangeType:\s*(\w+)', op_info) or [None, 'none'])[1], 3)
         ne = len(re.findall(r'eq\(', op_info))
-        ng = (len(re.search(r'group by:(.*?)(?:, funcs:|$)', op_info).group(1).split(',')) if 'group by:' in op_info else 0)
+        ng = (len(re.search(r'group by:(.*?)(?:, funcs:|$)', op_info).group(1).split(','))
+              if 'group by:' in op_info else 0)
         ns = len(re.findall(r'(?:tpch_sf40\.\w+\.\w+|Column#\d+)', op_info)) if op_class == 4 else 0
         hf = 1 if re.search(r'pushed down filter:(?!\s*empty)', op_info) else 0
         ib = 1 if '(Build)' in raw_id else 0
 
         jml, aml, sml = ndv_feats[idx]
 
+        # ─── Distributed features ───
+        table_name = None
+        if op_class == 0:  # SCAN
+            table_name = _resolve_table(access_obj, op_info, aliases)
+
+        t_skew_log = 0.0
+        n_tif = 0
+        col_corr = 0.0
+        if table_name and table_skew:
+            skew_info = table_skew.get(table_name, {})
+            t_skew_log = math.log(1.0 + min(skew_info.get("skew_ratio", 1.0), 100.0))
+            n_tif = skew_info.get("n_instances", 0)
+            c_info = col_stats.get(table_name, {})
+            col_corr = c_info.get("avg_correlation", 0.0)
+
         nodes.append({
             "depth": depth, "op_class": op_class, "est_rows": est_rows,
-            "location_id": loc_id, "stream_count": stream,
+            "location_id": loc_id, "engine_type_id": eng_id,
+            "stream_count": stream,
             "join_type": jt, "exchange_type": et,
             "n_equi": ne, "n_group": ng, "n_sort": ns,
             "has_filter": hf, "is_build": ib,
             "join_mem_log": jml, "agg_mem_log": aml, "sort_mem_log": sml,
+            "table_skew_log": t_skew_log,
+            "n_tiflash_instances": n_tif,
+            "column_corr": col_corr,
         })
-        node_raw_ids.append(raw_id)
 
     # Edges
     edges, indent_stack = [], []
@@ -207,32 +265,53 @@ def parse_plan(plan_text: str, ndv_cache: dict) -> Optional[Data]:
     max_depth = max(n["depth"] for n in nodes) if nodes else 1
     for n in nodes: n["depth_ratio"] = n["depth"] / max(max_depth, 1)
 
-    # Feature matrix [N, 16]
+    # ─── Feature matrix [N, 20] ───
     x_list = []
     for n in nodes:
         x_list.append([
-            float(n["op_class"]), math.log(1.0 + n["est_rows"]),
-            float(n["location_id"]), float(n["stream_count"]),
-            float(n["children_count"]), n["depth_ratio"],
-            float(n["n_equi"]), float(n["n_group"]), float(n["n_sort"]),
-            float(n["has_filter"]), math.log(1.0 + n["subtree_est"]),
-            float(n["join_type"]), float(n["exchange_type"]),
-            n["join_mem_log"], n["agg_mem_log"], n["sort_mem_log"],
+            float(n["op_class"]),                     # 0
+            math.log(1.0 + n["est_rows"]),             # 1
+            float(n["location_id"]),                   # 2
+            float(n["stream_count"]),                  # 3
+            float(n["children_count"]),                # 4
+            n["depth_ratio"],                          # 5
+            float(n["n_equi"]),                        # 6
+            float(n["n_group"]),                       # 7
+            float(n["n_sort"]),                        # 8
+            float(n["has_filter"]),                    # 9
+            math.log(1.0 + n["subtree_est"]),          # 10
+            float(n["join_type"]),                     # 11
+            float(n["exchange_type"]),                 # 12
+            n["join_mem_log"],                         # 13 (NDV)
+            n["agg_mem_log"],                          # 14 (NDV)
+            n["sort_mem_log"],                         # 15 (NDV)
+            float(n["engine_type_id"]),                # 16 (distributed)
+            n["table_skew_log"],                       # 17 (distributed)
+            float(n["n_tiflash_instances"]),           # 18 (distributed)
+            n["column_corr"],                          # 19 (distributed)
         ])
     x = torch.tensor(x_list, dtype=torch.float32)
 
+    # ─── Edge features [E, 5] ───
     if edges:
         edge_index = torch.tensor([[p, c] for p, c in edges], dtype=torch.long).t().contiguous()
         e_attr_list = []
         for p, c in edges:
             parent, child = nodes[p], nodes[c]
             ratio = child["est_rows"] / max(parent["est_rows"], 1.0) if parent["op_class"] == 1 else 1.0
-            loc_pair = parent["location_id"] * 3 + child["location_id"]
-            e_attr_list.append([ratio, float(loc_pair), float(child["exchange_type"]), float(child["is_build"])])
+            loc_pair = parent["location_id"] * N_LOCATIONS + child["location_id"]
+            cross = 0 if parent["engine_type_id"] == child["engine_type_id"] else 1
+            e_attr_list.append([
+                ratio,                          # 0: branch_ratio
+                float(loc_pair),                # 1: loc_pair
+                float(child["exchange_type"]),  # 2: exchange_type
+                float(child["is_build"]),       # 3: is_build
+                float(cross),                   # 4: cross_engine (new)
+            ])
         edge_attr = torch.tensor(e_attr_list, dtype=torch.float32)
     else:
         edge_index = torch.zeros(2, 0, dtype=torch.long)
-        edge_attr = torch.zeros(0, 4, dtype=torch.float32)
+        edge_attr = torch.zeros(0, EDGE_RAW_DIM, dtype=torch.float32)
 
     root_mask = torch.zeros(len(nodes), dtype=torch.bool)
     for i in range(len(nodes)):
@@ -240,7 +319,14 @@ def parse_plan(plan_text: str, ndv_cache: dict) -> Optional[Data]:
             root_mask[i] = True
             break
 
-    return Data(x=x, edge_index=edge_index, edge_attr=edge_attr, root_mask=root_mask, n_nodes=len(nodes))
+    # ─── Plan-level engine counts ───
+    n_tidb = sum(1 for n in nodes if n["engine_type_id"] == 0)
+    n_tikv = sum(1 for n in nodes if n["engine_type_id"] == 1)
+    n_tiflash = sum(1 for n in nodes if n["engine_type_id"] == 2)
+
+    return Data(x=x, edge_index=edge_index, edge_attr=edge_attr,
+                root_mask=root_mask, n_nodes=len(nodes),
+                n_tidb=n_tidb, n_tikv=n_tikv, n_tiflash=n_tiflash)
 
 
 def parse_memory_bytes(raw: str) -> Optional[float]:
@@ -303,8 +389,9 @@ def parse_analyze(text: str) -> Optional[Dict]:
             "disk_io_rows": total_disk, "network_rows": total_net}
 
 
-def load_dataset(plan_dir: str, analyze_dir: str, ndv_cache: dict):
-    """Load all aligned plan-label pairs with NDV features."""
+def load_dataset(plan_dir: str, analyze_dir: str, ndv_cache: dict,
+                 dist_cache: Optional[dict] = None):
+    """Load all aligned plan-label pairs with NDV + distributed features."""
     plan_files = set(f for f in os.listdir(plan_dir) if f.endswith('.txt'))
     analyze_files = set(f for f in os.listdir(analyze_dir) if f.endswith('.txt'))
     common = sorted(plan_files & analyze_files, key=lambda x: int(x.replace('.txt', '')))
@@ -314,7 +401,7 @@ def load_dataset(plan_dir: str, analyze_dir: str, ndv_cache: dict):
         with open(os.path.join(plan_dir, fname)) as f: plan_text = f.read()
         with open(os.path.join(analyze_dir, fname)) as f: analyze_text = f.read()
 
-        g = parse_plan(plan_text, ndv_cache)
+        g = parse_plan(plan_text, ndv_cache, dist_cache)
         lab = parse_analyze(analyze_text)
         if g is None or lab is None or g.x.shape[0] == 0:
             continue
@@ -340,20 +427,35 @@ def main():
     parser.add_argument('--plan-dir', default='/home/anqian/Desktop/my_lab/workloads/explain_plans')
     parser.add_argument('--analyze-dir', default='/home/anqian/Desktop/my_lab/workloads/explain_analyze_results')
     parser.add_argument('--ndv-cache', default='/home/anqian/Desktop/my_lab/workloads/ndv_cache.json')
+    parser.add_argument('--dist-cache', default='/home/anqian/Desktop/my_lab/workloads/dist_cache.json')
     parser.add_argument('--epochs', type=int, default=300)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--lr', type=float, default=3e-3)
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--no-dist', action='store_true',
+                        help='Disable distributed features (baseline run)')
     args = parser.parse_args()
 
     torch.manual_seed(args.seed); np.random.seed(args.seed)
 
-    print("Loading NDV cache...")
+    print("Loading caches...")
     ndv_cache = load_ndv_cache(args.ndv_cache)
-    print(f"  {len(ndv_cache)} columns")
+    print(f"  NDV: {len(ndv_cache)} columns")
 
-    print("Loading dataset with NDV features...")
-    graphs, labels, meta = load_dataset(args.plan_dir, args.analyze_dir, ndv_cache)
+    dist_cache = None
+    if not args.no_dist:
+        try:
+            dist_cache = load_dist_cache(args.dist_cache)
+            print(f"  Dist: {len(dist_cache.get('table_skew',{}))} tables, "
+                  f"{len(dist_cache.get('column_stats',{}))} with col stats")
+        except FileNotFoundError:
+            print("  Dist cache not found, running WITHOUT distributed features")
+            args.no_dist = True
+
+    print(f"Feature mode: {'BASE (16-dim, no distributed)' if args.no_dist else 'FULL (20-dim, with distributed)'}")
+
+    print("Loading dataset...")
+    graphs, labels, meta = load_dataset(args.plan_dir, args.analyze_dir, ndv_cache, dist_cache)
     print(f"  {len(graphs)} aligned plan-label pairs")
 
     norm_labels, stats = normalize_labels(labels)
@@ -372,52 +474,175 @@ def main():
     train_loader = DataLoader([graphs[i] for i in train_idx], batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader([graphs[i] for i in val_idx], batch_size=64)
 
-    # Model with adjusted feature dims
+    # ─── Model setup ───
     model = PlanGNN(hidden_dim=128, n_layers=3, n_heads=4, dropout=0.2)
-    # Patch the node encoder for 16-dim raw features
-    # We need to update _encode_nodes to handle the new NDV features
-    # Quick patch: modify the model's internal structure
-    # The _encode_nodes currently expects 13 dims; we have 16.
-    # We'll monkey-patch for now.
-    import model as mdl
-    original_encode = model._encode_nodes
+
+    # ─── Monkey-patch _encode_nodes for NDV + distributed features ───
+    # Base model expects 17 raw dims (13 base + 4 distributed).
+    # We have 20 (13 base + 4 distributed + 3 NDV).
+    # Strategy: use the native 17-dim encoding flow, then append NDV scalars at the end.
+    native_encode = model._encode_nodes
 
     def patched_encode(self, x):
-        # Original categorical embeddings (56 dims)
-        op_class_id = x[:, 0].long()
-        location_id = x[:, 2].long()
-        join_type_id = x[:, 11].long()
-        exchange_type_id = x[:, 12].long()
+        # Split: first 17 features = base + distributed (native format)
+        x_base = torch.cat([
+            x[:, :13],      # original 13 (cat + scalars)
+            x[:, 16:20],    # distributed 4 (engine_type, skew_log, n_tiflash, col_corr)
+        ], dim=-1)  # [N, 17]
+
+        # Run through native encoder (handles cat emb + scalar proj → 96 dims)
+        # But we can't just call native_encode because x_base has a different layout.
+        # Instead, manually construct the encoding matching the updated model.
+
+        # Cat embeddings (64 dims): op_class(0), location(2), join_type(11), exchange_type(12), engine_type(16)
+        op_class_id = x_base[:, 0].long()
+        location_id = x_base[:, 2].long()
+        join_type_id = x_base[:, 11].long()
+        exchange_type_id = x_base[:, 12].long()
+        engine_type_id = x[:, 16].long()  # from original x (not x_base)
+
         cat_emb = torch.cat([
-            self.op_class_emb(op_class_id),
-            self.location_emb(location_id),
-            self.join_type_emb(join_type_id),
-            self.exchange_type_emb(exchange_type_id),
-        ], dim=-1)  # 56
+            self.op_class_emb(op_class_id),          # 32
+            self.location_emb(location_id),           # 8
+            self.join_type_emb(join_type_id),         # 8
+            self.exchange_type_emb(exchange_type_id), # 8
+            self.engine_type_emb(engine_type_id),     # 8
+        ], dim=-1)  # 64
 
-        # Original scalars (9 dims)
-        orig_scalars = torch.cat([
-            x[:, 1:2], x[:, 3:4], x[:, 4:5], x[:, 5:6],
-            x[:, 6:7], x[:, 7:8], x[:, 8:9], x[:, 9:10], x[:, 10:11],
-        ], dim=-1)
-        scalar_proj = self.scalar_proj(orig_scalars)  # 9 → 32
+        # Scalar features (12 dims): 9 base + 3 distributed
+        scalars = torch.cat([
+            x[:, 1:2],   # est_rows_log
+            x[:, 3:4],   # stream_count
+            x[:, 4:5],   # children_count
+            x[:, 5:6],   # depth_ratio
+            x[:, 6:7],   # n_equi_conds
+            x[:, 7:8],   # n_group_keys
+            x[:, 8:9],   # n_sort_keys
+            x[:, 9:10],  # has_filter
+            x[:, 10:11], # subtree_est_rows_log
+            x[:, 17:18], # table_skew_log (distributed)
+            x[:, 18:19], # n_tiflash_instances (distributed)
+            x[:, 19:20], # column_corr (distributed)
+        ], dim=-1)  # 12
 
-        # New NDV scalars (3 dims) — add directly to the encoder input
+        scalar_proj = self.scalar_proj(scalars)  # 12 → 32
+
+        # NDV features (3 dims): appended directly
         ndv_feats = x[:, 13:16]  # join_mem_log, agg_mem_log, sort_mem_log
 
-        return torch.cat([cat_emb, scalar_proj, ndv_feats], dim=-1)  # 56 + 32 + 3 = 91
+        return torch.cat([cat_emb, scalar_proj, ndv_feats], dim=-1)  # 64 + 32 + 3 = 99
 
     model._encode_nodes = patched_encode.__get__(model, PlanGNN)
 
-    # Also patch the node_encoder for the new input dim: 91
+    # ─── Monkey-patch _encode_edges for cross_engine ───
+    native_encode_edges = model._encode_edges
+
+    def patched_encode_edges(self, edge_attr):
+        # edge_attr columns: [0:branch_ratio, 1:loc_pair, 2:exchange_type, 3:is_build, 4:cross_engine]
+        branch_ratio = edge_attr[:, 0:1]
+        loc_pair_id = edge_attr[:, 1].long()
+        exchange_type_id = edge_attr[:, 2].long()
+        is_build = edge_attr[:, 3:4]
+        cross_engine = edge_attr[:, 4:5]  # new
+
+        return torch.cat([
+            branch_ratio,                              # 1
+            self.edge_loc_emb(loc_pair_id),            # 8
+            self.edge_exchange_emb(exchange_type_id),  # 8
+            is_build,                                  # 1
+            cross_engine,                              # 1 (new)
+        ], dim=-1)  # 19
+
+    model._encode_edges = patched_encode_edges.__get__(model, PlanGNN)
+
+    # ─── Patch node_encoder input layer: 99 → 128 ───
     old_enc = model.node_encoder
-    new_first = torch.nn.Linear(91, 128)
-    new_first.weight.data[:, :88] = old_enc[0].weight.data
-    new_first.bias.data = old_enc[0].bias.data
+    old_in_dim = old_enc[0].weight.shape[1]  # 96 (from updated model.py)
+    new_first = torch.nn.Linear(99, 128)
+    with torch.no_grad():
+        new_first.weight.data[:, :old_in_dim] = old_enc[0].weight.data
+        new_first.bias.data = old_enc[0].bias.data
     old_enc[0] = new_first
     model.node_encoder = old_enc
 
-    print(f"Model params: {sum(p.numel() for p in model.parameters()):,}")
+    # ─── Monkey-patch forward for global skip with engine counts ───
+    native_forward = model.forward
+
+    def patched_forward(self, data):
+        from torch_geometric.nn import global_max_pool, global_add_pool
+        x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
+
+        x = self._encode_nodes(x)
+        x = self.node_encoder(x)
+        e = self._encode_edges(edge_attr)
+
+        for conv, norm in zip(self.convs, self.norms):
+            x_new = conv(x, edge_index, edge_attr=e)
+            x = norm(x + x_new)
+
+        h_max = global_max_pool(x, batch)
+        gate_logits = self.gate_mlp(x).squeeze(-1)
+        h_gated_list = []
+        for g in range(int(batch.max().item()) + 1):
+            g_mask = (batch == g)
+            g_x = x[g_mask]
+            g_gate = F.softmax(gate_logits[g_mask], dim=0)
+            h_gated_list.append((g_gate.unsqueeze(0) @ g_x).squeeze(0))
+        h_gated = torch.stack(h_gated_list)
+        h_sum = global_add_pool(x, batch)
+        plan_emb = self.out_proj(h_max + h_gated + h_sum)
+
+        # ─── Global skip with engine counts and dist aggregates ───
+        node_scalars = torch.cat([
+            data.x[:, 1:2], data.x[:, 3:4], data.x[:, 4:5], data.x[:, 5:6],
+            data.x[:, 6:7], data.x[:, 7:8], data.x[:, 8:9], data.x[:, 9:10], data.x[:, 10:11],
+        ], dim=-1)
+        global_sum = global_add_pool(node_scalars, batch)
+
+        # Distributed scalar aggregates
+        dist_scalars = torch.cat([
+            data.x[:, 17:18],  # table_skew_log
+            data.x[:, 18:19],  # n_tiflash_instances
+            data.x[:, 19:20],  # column_corr
+        ], dim=-1)
+        dist_sum = global_add_pool(dist_scalars, batch)
+
+        n_nodes = torch.bincount(batch + 1)[1:].float().unsqueeze(1)
+
+        # Engine counts: always compute from features (robust to batching)
+        engine_ids = data.x[:, 16].long()
+        n_tidb = torch.zeros_like(n_nodes)
+        n_tikv = torch.zeros_like(n_nodes)
+        n_tiflash = torch.zeros_like(n_nodes)
+        for g in range(int(batch.max().item()) + 1):
+            g_mask = (batch == g)
+            g_engines = engine_ids[g_mask]
+            n_tidb[g] = (g_engines == 0).sum().float()
+            n_tikv[g] = (g_engines == 1).sum().float()
+            n_tiflash[g] = (g_engines == 2).sum().float()
+
+        engine_counts = torch.cat([n_tidb, n_tikv, n_tiflash], dim=-1)
+
+        global_feat = self.global_skip(
+            torch.cat([global_sum, n_nodes, dist_sum, engine_counts], dim=-1))
+
+        plan_emb_aug = torch.cat([plan_emb, global_feat], dim=-1)
+
+        node_mem = self.node_mem_head(x)
+
+        return {
+            "mem": self.mem_head(plan_emb_aug),
+            "disk": self.disk_head(plan_emb_aug),
+            "net": self.net_head(plan_emb_aug),
+            "cpu": self.cpu_head(plan_emb_aug),
+            "plan_emb": plan_emb,
+            "node_mem": node_mem,
+        }
+
+    model.forward = patched_forward.__get__(model, PlanGNN)
+
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f"Model params: {n_params:,}")
 
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs, eta_min=1e-6)
@@ -456,7 +681,8 @@ def main():
             print(f'E{epoch:3d} val={val_loss:.4f} best={best_val:.4f}')
 
     os.makedirs('/home/anqian/Desktop/my_lab/workloads/checkpoints', exist_ok=True)
-    torch.save(best_state, '/home/anqian/Desktop/my_lab/workloads/checkpoints/best_ndv.pt')
+    ckpt_name = 'best_ndv.pt' if args.no_dist else 'best_dist.pt'
+    torch.save(best_state, f'/home/anqian/Desktop/my_lab/workloads/checkpoints/{ckpt_name}')
     model.load_state_dict(best_state)
     model.eval()
 
@@ -465,17 +691,21 @@ def main():
     all_p, all_t = {k: [] for k in key_map.values()}, {k: [] for k in key_map.values()}
     with torch.no_grad():
         for data in test_loader:
+            # Handle DataLoader batching: n_tidb etc. need to be tensors in batch
             preds = model(data)
             for k in key_map.values():
-                all_p[k].append(preds[k].squeeze(-1).numpy())
-                all_t[k].append(getattr(data, f'y_{k}').squeeze(-1).numpy())
+                all_p[k].append(preds[k].squeeze(-1).cpu().numpy())
+                all_t[k].append(getattr(data, f'y_{k}').squeeze(-1).cpu().numpy())
 
     rmap = {'mem': 'memory_bytes', 'disk': 'disk_io_rows', 'net': 'network_rows', 'cpu': 'cpu_time_ms'}
-    old = {'mem': (1.56, 11.41, 86.07, 0.78), 'disk': (1.18, 1.93, 2.44, 0.92),
-           'net': (1.58, 3.93, 5.19, 0.95), 'cpu': (1.71, 4.02, 6.01, 0.59)}
+    baseline = {'mem': (1.56, 11.41, 86.07, 0.78),
+                'disk': (1.18, 1.93, 2.44, 0.92),
+                'net': (1.58, 3.93, 5.19, 0.95),
+                'cpu': (1.71, 4.02, 6.01, 0.59)}
 
-    print(f"\n{'Dim':>8s}  {'P50':>8s} {'Δ':>6s}  {'P90':>8s} {'Δ':>6s}  {'P95':>8s} {'Δ':>6s}  {'R²':>8s} {'Δ':>6s}")
-    print("-" * 78)
+    mode_label = "BASE (no dist)" if args.no_dist else "FULL (with dist)"
+    print(f"\n{'Dim':>8s}  {'P50':>8s} {'Δ':>6s}  {'P90':>8s} {'Δ':>6s}  {'P95':>8s} {'Δ':>6s}  {'R²':>8s} {'Δ':>6s}  [{mode_label}]")
+    print("-" * 90)
     for k, label in [('mem', 'Memory'), ('disk', 'DiskIO'), ('net', 'Network'), ('cpu', 'CPU')]:
         p = np.concatenate(all_p[k]).flatten()
         t = np.concatenate(all_t[k]).flatten()
@@ -485,14 +715,17 @@ def main():
         qe = np.maximum(p_raw / np.maximum(t_raw, 1), np.maximum(t_raw, 1) / np.maximum(p_raw, 1))
         qs = np.sort(qe)
         nq = len(qs)
-        r2 = 1 - np.sum((t - p) ** 2) / np.sum((t - np.mean(t)) ** 2)
-        print(f'{label:>8s}  {qs[nq//2]:>8.2f} {qs[nq//2]-old[k][0]:>+6.2f}  '
-              f'{qs[int(nq*0.9)]:>8.2f} {qs[int(nq*0.9)]-old[k][1]:>+6.2f}  '
-              f'{qs[int(nq*0.95)]:>8.2f} {qs[int(nq*0.95)]-old[k][2]:>+6.2f}  '
-              f'{r2:>8.4f} {r2-old[k][3]:>+6.4f}')
+        # Safety: clip extreme Q-errors for R² stability
+        p_clipped = np.clip(p, -10, 10)
+        t_clipped = np.clip(t, -10, 10)
+        r2 = 1 - np.sum((t_clipped - p_clipped) ** 2) / max(np.sum((t_clipped - np.mean(t_clipped)) ** 2), 1e-8)
+        print(f'{label:>8s}  {qs[nq//2]:>8.2f} {qs[nq//2]-baseline[k][0]:>+6.2f}  '
+              f'{qs[int(nq*0.9)]:>8.2f} {qs[int(nq*0.9)]-baseline[k][1]:>+6.2f}  '
+              f'{qs[int(nq*0.95)]:>8.2f} {qs[int(nq*0.95)]-baseline[k][2]:>+6.2f}  '
+              f'{r2:>8.4f} {r2-baseline[k][3]:>+6.4f}')
 
-    print(f"\nNDV features enabled: +join_mem_log, +agg_mem_log, +sort_mem_log per node")
-    print(f"Best val loss: {best_val:.4f}")
+    print(f"\nBest val loss: {best_val:.4f}")
+    print(f"Checkpoint: checkpoints/{ckpt_name}")
 
 
 if __name__ == '__main__':

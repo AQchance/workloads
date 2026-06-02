@@ -1,0 +1,34 @@
+-- Query: 27127
+-- Source: SQLStorm v1.0 query 6976
+
+id	estRows	estCost	task	access object	operator info
+Projection_28	10.00	6516363243.89	root		tpch_sf40.nation.n_name, Column#51, Column#52, Column#53, Column#54
+└─TopN_31	10.00	6516363231.42	root		Column#51:desc, offset:0, count:10
+  └─HashAgg_36	25.00	6516358845.31	root		group by:tpch_sf40.nation.n_name, funcs:sum(tpch_sf40.orders.o_totalprice)->Column#51, funcs:count(distinct tpch_sf40.orders.o_orderkey)->Column#52, funcs:avg(tpch_sf40.orders.o_totalprice)->Column#53, funcs:count(distinct tpch_sf40.lineitem.l_orderkey)->Column#54, funcs:firstrow(tpch_sf40.nation.n_name)->tpch_sf40.nation.n_name
+    └─IndexJoin_50	6522338.74	5375602013.52	root		inner join, inner:TableReader_46, outer key:tpch_sf40.lineitem.l_orderkey, inner key:tpch_sf40.orders.o_orderkey, equal cond:eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)
+      ├─IndexHashJoin_101(Build)	6476727.59	1997094790.20	root		inner join, inner:IndexReader_98, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)
+      │ ├─TableReader_135(Build)	214926.54	1783503508.65	root		MppVersion: 2, data:ExchangeSender_134
+      │ │ └─ExchangeSender_134	214926.54	3547620643.37	mpp[tiflash]		ExchangeType: PassThrough
+      │ │   └─Projection_133	214926.54	3547620643.37	mpp[tiflash]		tpch_sf40.nation.n_name, tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_suppkey
+      │ │     └─HashJoin_116	214926.54	3547612906.01	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.partsupp.ps_partkey, tpch_sf40.part.p_partkey)]
+      │ │       ├─ExchangeReceiver_75(Build)	53333.33	524144167.74	mpp[tiflash]		
+      │ │       │ └─ExchangeSender_74	53333.33	517556967.74	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+      │ │       │   └─TableFullScan_72	53333.33	498356967.74	mpp[tiflash]	table:p	pushed down filter:like(tpch_sf40.part.p_type, "MANUFACTURED%", 92), keep order:false
+      │ │       └─Projection_71(Probe)	32096613.71	2971992227.45	mpp[tiflash]		tpch_sf40.nation.n_name, tpch_sf40.partsupp.ps_partkey, tpch_sf40.partsupp.ps_suppkey
+      │ │         └─HashJoin_59	32096613.71	2970836749.36	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_suppkey)], stream_count: 2
+      │ │           ├─ExchangeReceiver_67(Build)	399988.00	38196775.16	mpp[tiflash]		stream_count: 2
+      │ │           │ └─ExchangeSender_66	399988.00	24997171.16	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.supplier.s_suppkey, collate: binary], stream_count: 2
+      │ │           │   └─Projection_65	399988.00	24997171.16	mpp[tiflash]		tpch_sf40.nation.n_name, tpch_sf40.supplier.s_suppkey
+      │ │           │     └─HashJoin_60	399988.00	24987571.45	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.nation.n_nationkey, tpch_sf40.supplier.s_nationkey)]
+      │ │           │       ├─ExchangeReceiver_63(Build)	25.00	567519.34	mpp[tiflash]		
+      │ │           │       │ └─ExchangeSender_62	25.00	565339.09	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+      │ │           │       │   └─TableFullScan_61	25.00	565339.09	mpp[tiflash]	table:n	keep order:false
+      │ │           │       └─TableFullScan_64(Probe)	400000.00	23780000.00	mpp[tiflash]	table:s	keep order:false
+      │ │           └─ExchangeReceiver_70(Probe)	32000000.00	2880580000.00	mpp[tiflash]		
+      │ │             └─ExchangeSender_69	32000000.00	1856580000.00	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.partsupp.ps_suppkey, collate: binary]
+      │ │               └─TableFullScan_68	32000000.00	1856580000.00	mpp[tiflash]	table:ps	keep order:false
+      │ └─IndexReader_98(Probe)	6476727.59	5588.76	root		index:IndexRangeScan_97
+      │   └─IndexRangeScan_97	6476727.59	7358.87	cop[tikv]	table:l, index:idx_lineitem_fk2(l_partkey, l_suppkey)	range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false
+      └─TableReader_46(Probe)	991845.96	215.51	root		data:Selection_45
+        └─Selection_45	991845.96	397.06	cop[tikv]		ge(tpch_sf40.orders.o_orderdate, 1997-01-01), le(tpch_sf40.orders.o_orderdate, 1997-12-31)
+          └─TableRangeScan_44	6476727.59	297.26	cop[tikv]	table:o	range: decided by [tpch_sf40.lineitem.l_orderkey], keep order:false

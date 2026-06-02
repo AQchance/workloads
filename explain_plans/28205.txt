@@ -1,0 +1,42 @@
+-- Query: 28205
+-- Source: SQLStorm v1.0 query 9564
+
+id	estRows	estCost	task	access object	operator info
+Projection_34	959997.92	28806743062.73	root		tpch_sf40.customer.c_name, Column#53->Column#55, tpch_sf40.nation.n_name, tpch_sf40.orders.o_orderdate
+└─Sort_36	959997.92	28805784984.80	root		Column#53:desc, tpch_sf40.orders.o_orderdate:desc
+  └─Selection_38	959997.92	27834990620.47	root		gt(Column#53, 100000)
+    └─HashAgg_42	1199997.40	27775110750.21	root		group by:Column#72, Column#73, Column#74, funcs:sum(Column#71)->Column#53, funcs:firstrow(Column#72)->tpch_sf40.customer.c_name, funcs:firstrow(Column#73)->tpch_sf40.orders.o_orderdate, funcs:firstrow(Column#74)->tpch_sf40.nation.n_name
+      └─Projection_308	37027050.42	21176815182.53	root		mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#71, tpch_sf40.customer.c_name->Column#72, tpch_sf40.orders.o_orderdate->Column#73, tpch_sf40.nation.n_name->Column#74
+        └─Projection_46	37027050.42	20225275527.35	root		tpch_sf40.customer.c_name, tpch_sf40.orders.o_orderdate, tpch_sf40.lineitem.l_extendedprice, tpch_sf40.lineitem.l_discount, tpch_sf40.nation.n_name
+          └─HashJoin_58	37027050.42	20179084281.95	root		inner join, equal:[eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.partsupp.ps_partkey) eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_suppkey)]
+            ├─TableReader_271(Build)	32000000.00	2054690000.00	root		MppVersion: 2, data:ExchangeSender_270
+            │ └─ExchangeSender_270	32000000.00	1856580000.00	mpp[tiflash]		ExchangeType: PassThrough
+            │   └─TableFullScan_269	32000000.00	1856580000.00	mpp[tiflash]	table:ps	keep order:false
+            └─HashJoin_110(Probe)	37027050.42	10357718061.10	root		inner join, equal:[eq(tpch_sf40.lineitem.l_suppkey, tpch_sf40.supplier.s_suppkey)]
+              ├─TableReader_264(Build)	400000.00	16552000.00	root		MppVersion: 2, data:ExchangeSender_263
+              │ └─ExchangeSender_263	400000.00	19024000.00	mpp[tiflash]		ExchangeType: PassThrough
+              │   └─TableFullScan_262	400000.00	19024000.00	mpp[tiflash]	table:s	keep order:false
+              └─IndexHashJoin_124(Probe)	36914488.34	8457931595.97	root		inner join, inner:TableReader_119, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+                ├─TableReader_154(Build)	9163616.50	3304402125.44	root		MppVersion: 2, data:ExchangeSender_153
+                │ └─ExchangeSender_153	9163616.50	5116967484.68	mpp[tiflash]		ExchangeType: PassThrough
+                │   └─Projection_152	9163616.50	5116967484.68	mpp[tiflash]		tpch_sf40.nation.n_name, tpch_sf40.customer.c_name, tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_orderdate, tpch_sf40.orders.o_custkey
+                │     └─HashJoin_134	9163616.50	5116417667.69	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                │       ├─ExchangeReceiver_76(Build)	1199997.40	483040539.81	mpp[tiflash]		stream_count: 2
+                │       │ └─ExchangeSender_75	1199997.40	413440690.61	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                │       │   └─Projection_74	1199997.40	413440690.61	mpp[tiflash]		tpch_sf40.nation.n_name, tpch_sf40.customer.c_custkey, tpch_sf40.customer.c_name
+                │       │     └─HashJoin_63	1199997.40	413397490.70	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.nation.n_nationkey, tpch_sf40.customer.c_nationkey)]
+                │       │       ├─ExchangeReceiver_72(Build)	5.00	1202425.31	mpp[tiflash]		
+                │       │       │ └─ExchangeSender_71	5.00	1201930.31	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+                │       │       │   └─Projection_70	5.00	1201930.31	mpp[tiflash]		tpch_sf40.nation.n_nationkey, tpch_sf40.nation.n_name
+                │       │       │     └─HashJoin_64	5.00	1201930.19	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.region.r_regionkey, tpch_sf40.nation.n_regionkey)]
+                │       │       │       ├─ExchangeReceiver_68(Build)	1.00	562979.73	mpp[tiflash]		
+                │       │       │       │ └─ExchangeSender_67	1.00	562893.21	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+                │       │       │       │   └─Selection_66	1.00	562893.21	mpp[tiflash]		eq(tpch_sf40.region.r_name, "EUROPE")
+                │       │       │       │     └─TableFullScan_65	5.00	562881.21	mpp[tiflash]	table:r	pushed down filter:empty, keep order:false
+                │       │       │       └─TableFullScan_69(Probe)	25.00	638908.37	mpp[tiflash]	table:n	keep order:false
+                │       │       └─TableFullScan_73(Probe)	6000000.00	402595054.65	mpp[tiflash]	table:c	keep order:false
+                │       └─ExchangeReceiver_80(Probe)	9163616.50	4615635348.15	mpp[tiflash]		
+                │         └─ExchangeSender_79	9163616.50	4175781756.15	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                │           └─TableFullScan_77	9163616.50	3887781756.15	mpp[tiflash]	table:o	pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1997-01-01), lt(tpch_sf40.orders.o_orderdate, 1997-12-31), keep order:false
+                └─TableReader_119(Probe)	9163616.50	372.48	root		data:TableRangeScan_118
+                  └─TableRangeScan_118	9163616.50	333.12	cop[tikv]	table:l	range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false

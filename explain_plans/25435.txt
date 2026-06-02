@@ -1,0 +1,32 @@
+-- Query: 25435
+-- Source: SQLStorm v1.0 query 834
+
+id	estRows	estCost	task	access object	operator info
+Projection_157	100.00	4309081998.75	root		tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_orderstatus, tpch_sf40.orders.o_totalprice, coalesce(Column#91, 0)->Column#137, coalesce(tpch_sf40.supplier.s_name, Unknown Supplier)->Column#138, tpch_sf40.partsupp.ps_availqty, tpch_sf40.partsupp.ps_supplycost
+└─TopN_160	100.00	4309076884.00	root		tpch_sf40.orders.o_totalprice:desc, tpch_sf40.orders.o_orderdate, offset:0, count:100
+  └─HashJoin_165	161.03	4309020097.47	root		CARTESIAN left outer join
+    ├─Selection_270(Build)	1.61	3981.13	root		eq(Column#125, 1)
+    │ └─Window_273	2.01	3880.69	root		row_number()->Column#125 over(partition by tpch_sf40.partsupp.ps_partkey order by tpch_sf40.supplier.s_acctbal desc rows between current row and current row)
+    │   └─Sort_335	2.01	3880.69	root		tpch_sf40.partsupp.ps_partkey, tpch_sf40.supplier.s_acctbal:desc
+    │     └─IndexJoin_297	2.01	3730.60	root		inner join, inner:TableReader_294, outer key:tpch_sf40.partsupp.ps_suppkey, inner key:tpch_sf40.supplier.s_suppkey, equal cond:eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)
+    │       ├─TableReader_330(Build)	2.01	1117.37	root		data:Selection_329
+    │       │ └─Selection_329	2.01	1471.83	cop[tikv]		lt(tpch_sf40.partsupp.ps_supplycost, 500.485994)
+    │       │   └─TableRangeScan_328	4.02	1271.35	cop[tikv]	table:ps	range:[5698350,5698350], keep order:false
+    │       └─TableReader_294(Probe)	2.01	299.80	root		data:TableRangeScan_293
+    │         └─TableRangeScan_293	2.01	310.51	cop[tikv]	table:s	range: decided by [tpch_sf40.partsupp.ps_suppkey], keep order:false
+    └─Sort_167(Probe)	100.00	4309012002.44	root		tpch_sf40.orders.o_totalprice:desc, tpch_sf40.orders.o_orderdate
+      └─IndexJoin_179	100.00	4308976909.60	root		left outer join, inner:HashAgg_172, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+        ├─TopN_189(Build)	100.00	4308902371.47	root		tpch_sf40.orders.o_totalprice:desc, tpch_sf40.orders.o_orderdate, offset:0, count:100
+        │ └─TableReader_214	100.00	4308867918.63	root		MppVersion: 2, data:ExchangeSender_213
+        │   └─ExchangeSender_213	100.00	8617721537.25	mpp[tiflash]		ExchangeType: PassThrough
+        │     └─TopN_212	100.00	8617721537.25	mpp[tiflash]		tpch_sf40.orders.o_totalprice:desc, tpch_sf40.orders.o_orderdate, offset:0, count:100
+        │       └─Window_211	23581872.33	8241702247.93	mpp[tiflash]		dense_rank()->Column#72 over(partition by tpch_sf40.orders.o_orderstatus order by tpch_sf40.orders.o_totalprice desc), stream_count: 2
+        │         └─Sort_199	23581872.33	8241702247.93	mpp[tiflash]		tpch_sf40.orders.o_orderstatus, tpch_sf40.orders.o_totalprice:desc, stream_count: 2
+        │           └─ExchangeReceiver_198	23581872.33	6750648290.70	mpp[tiflash]		stream_count: 2
+        │             └─ExchangeSender_197	23581872.33	4651861653.03	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderstatus, collate: utf8mb4_bin], stream_count: 2
+        │               └─TableFullScan_195	23581872.33	4507861653.03	mpp[tiflash]	table:o	pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1996-01-01 00:00:00.000000), keep order:false
+        └─HashAgg_172(Probe)	26.61	2681.95	root		group by:tpch_sf40.lineitem.l_orderkey, funcs:sum(Column#143)->Column#91, funcs:firstrow(tpch_sf40.lineitem.l_orderkey)->tpch_sf40.lineitem.l_orderkey
+          └─TableReader_173	26.61	1030.20	root		data:HashAgg_171
+            └─HashAgg_171	26.61	2009.82	cop[tikv]		group by:tpch_sf40.lineitem.l_orderkey, funcs:sum(mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount)))->Column#143
+              └─Selection_170	26.61	383.02	cop[tikv]		ge(tpch_sf40.lineitem.l_shipdate, 1997-01-01 00:00:00.000000)
+                └─TableRangeScan_169	100.00	333.12	cop[tikv]	table:l	range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false

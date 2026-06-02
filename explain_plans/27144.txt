@@ -1,0 +1,33 @@
+-- Query: 27144
+-- Source: SQLStorm v1.0 query 7010
+
+id	estRows	estCost	task	access object	operator info
+Sort_67	233582455702054.41	9386281794765903872.00	root		Column#117:desc, tpch_sf40.supplier.s_name
+└─Projection_69	233582455702054.41	524542658149794.12	root		tpch_sf40.orders.o_orderkey, tpch_sf40.supplier.s_name, tpch_sf40.part.p_name, Column#117
+  └─Projection_71	233582455702054.41	291427367359143.81	root		tpch_sf40.orders.o_orderkey, Column#117, Column#117, tpch_sf40.supplier.s_name, tpch_sf40.part.p_name
+    └─HashJoin_73	233582455702054.41	33253870830.92	root		CARTESIAN inner join, other cond:ge(Column#117, tpch_sf40.partsupp.ps_supplycost), le(Column#117, mul(tpch_sf40.partsupp.ps_supplycost, 1.2))
+      ├─Selection_169(Build)	7245125.02	24968110138.59	root		le(Column#119, 10), not(isnull(Column#117))
+      │ └─Shuffle_270	9056406.28	24064280792.21	root		execution info: concurrency:2, data sources:[HashAgg_203]
+      │   └─Window_172	9056406.28	24064280792.21	root		rank()->Column#119 over(partition by tpch_sf40.orders.o_orderdate order by Column#117 desc)
+      │     └─Sort_254	9056406.28	24064280792.21	root		tpch_sf40.orders.o_orderdate, Column#117:desc
+      │       └─ShuffleReceiver_281	9056406.28	0.00	root		
+      │         └─HashAgg_203	9056406.28	13518871711.24	root		group by:Column#159, Column#160, funcs:sum(Column#158)->Column#117, funcs:firstrow(Column#159)->tpch_sf40.orders.o_orderkey, funcs:firstrow(Column#160)->tpch_sf40.orders.o_orderdate
+      │           └─Projection_280	36739527.26	8207026303.31	root		mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#158, tpch_sf40.orders.o_orderkey->Column#159, tpch_sf40.orders.o_orderdate->Column#160
+      │             └─IndexHashJoin_216	36739527.26	7272042074.00	root		inner join, inner:TableReader_211, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+      │               ├─TableReader_248(Build)	9120184.33	2205320488.53	root		MppVersion: 2, data:ExchangeSender_247
+      │               │ └─ExchangeSender_247	9120184.33	3768580000.00	mpp[tiflash]		ExchangeType: PassThrough
+      │               │   └─TableFullScan_245	9120184.33	3480580000.00	mpp[tiflash]	table:o	pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1996-01-01), lt(tpch_sf40.orders.o_orderdate, 1997-01-01), keep order:false
+      │               └─TableReader_211(Probe)	9120184.33	340.80	root		data:TableRangeScan_210
+      │                 └─TableRangeScan_210	9120184.33	333.12	cop[tikv]	table:l	range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+      └─HashJoin_88(Probe)	32239948.24	7027103147.81	root		inner join, equal:[eq(tpch_sf40.partsupp.ps_partkey, tpch_sf40.part.p_partkey)]
+        ├─TableReader_168(Build)	8000000.00	729185100.08	root		MppVersion: 2, data:ExchangeSender_167
+        │ └─ExchangeSender_167	8000000.00	531378200.15	mpp[tiflash]		ExchangeType: PassThrough
+        │   └─TableFullScan_166	8000000.00	531378200.15	mpp[tiflash]	table:p	keep order:false
+        └─TableReader_147(Probe)	32097576.63	3813575476.75	root		MppVersion: 2, data:ExchangeSender_146
+          └─ExchangeSender_146	32097576.63	2472280146.24	mpp[tiflash]		ExchangeType: PassThrough
+            └─Projection_145	32097576.63	2472280146.24	mpp[tiflash]		tpch_sf40.supplier.s_name, tpch_sf40.partsupp.ps_partkey, tpch_sf40.partsupp.ps_supplycost
+              └─HashJoin_120	32097576.63	2471124633.49	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_suppkey)]
+                ├─ExchangeReceiver_93(Build)	400000.00	71593247.67	mpp[tiflash]		
+                │ └─ExchangeSender_92	400000.00	25093247.67	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+                │   └─TableFullScan_91	400000.00	25093247.67	mpp[tiflash]	table:s	keep order:false
+                └─TableFullScan_94(Probe)	32000000.00	2347433052.48	mpp[tiflash]	table:ps	keep order:false

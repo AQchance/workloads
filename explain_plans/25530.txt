@@ -1,0 +1,30 @@
+-- Query: 25530
+-- Source: SQLStorm v1.0 query 1315
+
+id	estRows	estCost	task	access object	operator info
+Sort_90	10681837.66	21193743533.28	root		tpch_sf40.part.p_partkey
+└─Projection_92	10681837.66	8195037065.50	root		tpch_sf40.part.p_partkey, tpch_sf40.part.p_name, tpch_sf40.part.p_retailprice, coalesce(Column#58, 0)->Column#102, coalesce(Column#59, 0)->Column#103, case(isnull(Column#80), Not a Customer, Valued Customer)->Column#104
+  └─HashJoin_95	10681837.66	7387506161.03	root		left outer join, equal:[eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.customer.c_custkey)]
+    ├─TableReader_267(Build)	4800010.40	4223480877.07	root		MppVersion: 2, data:ExchangeSender_266
+    │ └─ExchangeSender_266	4800010.40	7940080655.90	mpp[tiflash]		ExchangeType: PassThrough
+    │   └─Selection_196	4800010.40	7940080655.90	mpp[tiflash]		gt(Column#80, 1000)
+    │     └─Projection_141	6000013.00	7925680624.70	mpp[tiflash]		Column#80, tpch_sf40.customer.c_custkey
+    │       └─HashAgg_142	6000013.00	7925536624.39	mpp[tiflash]		group by:tpch_sf40.customer.c_custkey, tpch_sf40.customer.c_name, funcs:sum(Column#114)->Column#80, funcs:firstrow(tpch_sf40.customer.c_custkey)->tpch_sf40.customer.c_custkey, stream_count: 2
+    │         └─ExchangeReceiver_144	6000013.00	7860592411.68	mpp[tiflash]		stream_count: 2
+    │           └─ExchangeSender_143	6000013.00	7422591462.68	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], [name: tpch_sf40.customer.c_name, collate: utf8mb4_bin], stream_count: 2
+    │             └─HashAgg_135	6000013.00	7422591462.68	mpp[tiflash]		group by:tpch_sf40.customer.c_custkey, tpch_sf40.customer.c_name, funcs:sum(tpch_sf40.orders.o_totalprice)->Column#114
+    │               └─Projection_129	29235455.49	7249009482.88	mpp[tiflash]		tpch_sf40.customer.c_custkey, tpch_sf40.customer.c_name, tpch_sf40.orders.o_totalprice, tpch_sf40.orders.o_custkey
+    │                 └─HashJoin_128	29235455.49	7247606181.02	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+    │                   ├─ExchangeReceiver_118(Build)	6000000.00	600330289.04	mpp[tiflash]		stream_count: 2
+    │                   │ └─ExchangeSender_117	6000000.00	367830289.04	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+    │                   │   └─TableFullScan_116	6000000.00	367830289.04	mpp[tiflash]	table:c	keep order:false
+    │                   └─ExchangeReceiver_122(Probe)	29235455.49	6587024163.20	mpp[tiflash]		
+    │                     └─ExchangeSender_121	29235455.49	4452835912.63	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+    │                       └─TableFullScan_119	29235455.49	4308835912.63	mpp[tiflash]	table:o	pushed down filter:eq(tpch_sf40.orders.o_orderstatus, "O"), keep order:false
+    └─IndexHashJoin_161(Probe)	10681837.66	2105878949.87	root		left outer join, inner:Projection_155, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.partsupp.ps_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)
+      ├─TableReader_185(Build)	2658666.67	613120609.51	root		MppVersion: 2, data:ExchangeSender_184
+      │ └─ExchangeSender_184	2658666.67	637415677.69	mpp[tiflash]		ExchangeType: PassThrough
+      │   └─TableFullScan_182	2658666.67	618215677.69	mpp[tiflash]	table:p	pushed down filter:lt(tpch_sf40.part.p_retailprice, 1499.402411), keep order:false, stats:partial[p_retailprice:unInitialized, ID 47:unInitialized]
+      └─Projection_155(Probe)	85077333333333.33	329.41	root		tpch_sf40.partsupp.ps_partkey, tpch_sf40.partsupp.ps_suppkey, cast(tpch_sf40.partsupp.ps_availqty, decimal(32,0) BINARY)->Column#58, cast(mul(tpch_sf40.partsupp.ps_supplycost, cast(tpch_sf40.partsupp.ps_availqty, decimal(10,0) BINARY)), decimal(47,2) BINARY)->Column#59
+        └─TableReader_154	2658666.67	279.02	root		data:TableRangeScan_153
+          └─TableRangeScan_153	2658666.67	304.59	cop[tikv]	table:ps	range: decided by [eq(tpch_sf40.partsupp.ps_partkey, tpch_sf40.part.p_partkey)], keep order:false

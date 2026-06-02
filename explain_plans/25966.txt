@@ -1,0 +1,37 @@
+-- Query: 25966
+-- Source: SQLStorm v1.0 query 3285
+
+id	estRows	estCost	task	access object	operator info
+Sort_109	319027.20	151747841759665.53	root		Column#193:desc
+└─Projection_111	319027.20	151747543425315.19	root		tpch_sf40.supplier.s_suppkey, tpch_sf40.supplier.s_name, coalesce(tpch_sf40.customer.c_name, No Active Customer)->Column#205, Column#193, Column#194, Column#210
+  └─Apply_113	319027.20	151747535067600.12	root		CARTESIAN left outer join
+    ├─HashJoin_115(Build)	319027.20	62233813704.85	root		left outer join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.customer.c_custkey)]
+    │ ├─Selection_116(Build)	319027.20	61720832638.32	root		le(Column#196, 10)
+    │ │ └─Window_117	398784.00	61700933316.72	root		rank()->Column#196 over(order by Column#193 desc)
+    │ │   └─Sort_265	398784.00	61700933316.72	root		Column#193:desc
+    │ │     └─HashAgg_118	398784.00	61324241202.49	root		group by:Column#217, Column#218, funcs:sum(Column#215)->Column#193, funcs:count(distinct Column#216)->Column#194, funcs:firstrow(Column#217)->tpch_sf40.supplier.s_suppkey, funcs:firstrow(Column#218)->tpch_sf40.supplier.s_name
+    │ │       └─Projection_289	148524912.18	39094038184.54	root		mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#215, tpch_sf40.orders.o_orderkey->Column#216, tpch_sf40.supplier.s_suppkey->Column#217, tpch_sf40.supplier.s_name->Column#218
+    │ │         └─HashJoin_134	148524912.18	35277170728.82	root		inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)]
+    │ │           ├─TableReader_264(Build)	29235455.49	2492306323.60	root		MppVersion: 2, data:ExchangeSender_263
+    │ │           │ └─ExchangeSender_263	29235455.49	3376662595.40	mpp[tiflash]		ExchangeType: PassThrough
+    │ │           │   └─TableFullScan_261	29235455.49	3232662595.40	mpp[tiflash]	table:o	pushed down filter:eq(tpch_sf40.orders.o_orderstatus, "O"), keep order:false
+    │ │           └─HashJoin_182(Probe)	147486267.57	22361422421.41	root		inner join, equal:[eq(tpch_sf40.partsupp.ps_partkey, tpch_sf40.lineitem.l_partkey)]
+    │ │             ├─IndexHashJoin_213(Build)	32097576.63	714204788.28	root		inner join, inner:IndexReader_210, outer key:tpch_sf40.supplier.s_suppkey, inner key:tpch_sf40.partsupp.ps_suppkey, equal cond:eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_suppkey)
+    │ │             │ ├─TableReader_241(Build)	400000.00	29596623.84	root		MppVersion: 2, data:ExchangeSender_240
+    │ │             │ │ └─ExchangeSender_240	400000.00	25093247.67	mpp[tiflash]		ExchangeType: PassThrough
+    │ │             │ │   └─TableFullScan_239	400000.00	25093247.67	mpp[tiflash]	table:s	keep order:false
+    │ │             │ └─IndexReader_210(Probe)	32097576.63	14204.30	root		index:IndexRangeScan_209
+    │ │             │   └─IndexRangeScan_209	32097576.63	18240.09	cop[tikv]	table:ps, index:idx_partsupp_fk1(ps_suppkey)	range: decided by [eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)], keep order:false
+    │ │             └─TableReader_257(Probe)	36597147.48	16354480200.65	root		MppVersion: 2, data:ExchangeSender_256
+    │ │               └─ExchangeSender_256	36597147.48	21114984080.50	mpp[tiflash]		ExchangeType: PassThrough
+    │ │                 └─TableFullScan_254	36597147.48	19962925088.50	mpp[tiflash]	table:l	pushed down filter:ge(tpch_sf40.lineitem.l_shipdate, 1997-01-01 00:00:00.000000), le(tpch_sf40.lineitem.l_shipdate, 1997-12-31 00:00:00.000000), keep order:false
+    │ └─Selection_266(Probe)	4142737.39	268739374.81	root		not(isnull(tpch_sf40.customer.c_custkey))
+    │   └─CTEFullScan_268	5178421.74	10336129.80	root	CTE:activecustomers AS a	data:CTE_2
+    └─StreamAgg_275(Probe)	319027.20	475461970.81	root		funcs:count(1)->Column#210
+      └─Selection_282	1321645911421.93	268739374.81	root		gt(tpch_sf40.customer.c_acctbal, Column#193)
+        └─CTEFullScan_284	1652057389277.42	10336129.80	root	CTE:activecustomers AS c	data:CTE_2
+CTE_2	5178421.74	10336129.80	root		Non-Recursive CTE
+└─TableReader_107(Seed Part)	5178421.74	712419772.36	root		MppVersion: 2, data:ExchangeSender_106
+  └─ExchangeSender_106	5178421.74	479259734.34	mpp[tiflash]		ExchangeType: PassThrough
+    └─Selection_105	5178421.74	479011170.10	mpp[tiflash]		gt(tpch_sf40.customer.c_acctbal, 500)
+      └─TableFullScan_104	6000000.00	464611170.10	mpp[tiflash]	table:c	pushed down filter:empty, keep order:false

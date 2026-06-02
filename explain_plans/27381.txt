@@ -1,0 +1,38 @@
+-- Query: 27381
+-- Source: SQLStorm v1.0 query 7541
+
+id	estRows	estCost	task	access object	operator info
+Sort_230	0.80	924564630.46	root		Column#80:desc
+└─Projection_233	0.80	924564604.86	root		tpch_sf40.customer.c_custkey, tpch_sf40.customer.c_name, Column#80, tpch_sf40.nation.n_name, tpch_sf40.region.r_name
+  └─HashJoin_234	0.80	924564603.86	root		inner join, equal:[eq(Column#80, Column#91)]
+    ├─Selection_297(Build)	0.80	246705714.40	root		not(isnull(Column#91))
+    │ └─MaxOneRow_298	1.00	246705664.50	root		
+    │   └─StreamAgg_300	1.00	246705664.50	root		funcs:max(Column#90)->Column#91
+    │     └─TopN_318	1.00	246705614.60	root		Column#90:desc, offset:0, count:1
+    │       └─Selection_308	3840000.00	246705600.00	root		not(isnull(Column#90))
+    │         └─CTEFullScan_310	4800000.00	7185600.00	root	CTE:topcustomers	data:CTE_1
+    └─HashJoin_238(Probe)	25.00	677856037.16	root		inner join, equal:[eq(tpch_sf40.nation.n_nationkey, tpch_sf40.customer.c_custkey)]
+      ├─HashJoin_273(Build)	25.00	10155.16	root		inner join, equal:[eq(tpch_sf40.region.r_regionkey, tpch_sf40.nation.n_regionkey)]
+      │ ├─TableReader_284(Build)	5.00	998.73	root		data:TableFullScan_283
+      │ │ └─TableFullScan_283	5.00	1426.42	cop[tikv]	table:r	keep order:false
+      │ └─TableReader_289(Probe)	25.00	5884.10	root		data:TableFullScan_288
+      │   └─TableFullScan_288	25.00	7306.27	cop[tikv]	table:n	keep order:false
+      └─Selection_293(Probe)	3840000.00	486225600.00	root		not(isnull(Column#80)), not(isnull(tpch_sf40.customer.c_custkey))
+        └─CTEFullScan_295	4800000.00	7185600.00	root	CTE:topcustomers AS tc	data:CTE_1
+CTE_1	4800000.00	7185600.00	root		Non-Recursive CTE
+└─Projection_54(Seed Part)	4800000.00	26366861329.48	root		tpch_sf40.customer.c_custkey, tpch_sf40.customer.c_name, Column#77
+  └─Selection_56	4800000.00	26363268529.48	root		or(and(1, not(isnull(Column#77))), not(isnull(Column#77)))
+    └─HashAgg_60	6000000.00	26063868529.48	root		group by:tpch_sf40.customer.c_custkey, tpch_sf40.customer.c_name, funcs:sum(Column#70)->Column#77, funcs:firstrow(tpch_sf40.customer.c_custkey)->tpch_sf40.customer.c_custkey, funcs:firstrow(tpch_sf40.customer.c_name)->tpch_sf40.customer.c_name
+      └─MergeJoin_65	6000000.00	24669773032.48	root		inner join, left key:tpch_sf40.customer.c_custkey, right key:tpch_sf40.orders.o_orderkey
+        ├─Window_115(Build)	9099534.72	23230163241.73	root		rank()->Column#72 over(partition by tpch_sf40.orders.o_orderkey order by Column#70 desc)
+        │ └─Sort_169	9099534.72	23230163241.73	root		tpch_sf40.orders.o_orderkey, Column#70:desc
+        │   └─HashAgg_118	9099534.72	12645981821.84	root		group by:Column#108, Column#109, funcs:sum(Column#107)->Column#70, funcs:firstrow(Column#108)->tpch_sf40.orders.o_orderkey
+        │     └─Projection_225	36914488.34	8237136448.22	root		mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#107, tpch_sf40.orders.o_orderkey->Column#108, tpch_sf40.orders.o_orderdate->Column#109
+        │       └─IndexHashJoin_131	36914488.34	7297699634.47	root		inner join, inner:TableReader_126, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+        │         ├─TableReader_163(Build)	9163616.50	2206849300.80	root		MppVersion: 2, data:ExchangeSender_162
+        │         │ └─ExchangeSender_162	9163616.50	3768580000.00	mpp[tiflash]		ExchangeType: PassThrough
+        │         │   └─TableFullScan_160	9163616.50	3480580000.00	mpp[tiflash]	table:o	pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1997-01-01), lt(tpch_sf40.orders.o_orderdate, 1997-12-31), keep order:false
+        │         └─TableReader_126(Probe)	9163616.50	340.80	root		data:TableRangeScan_125
+        │           └─TableRangeScan_125	9163616.50	333.12	cop[tikv]	table:l	range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+        └─TableReader_113(Probe)	6000000.00	1432075122.92	root		data:TableFullScan_112
+          └─TableFullScan_112	6000000.00	1943450245.85	cop[tikv]	table:c	keep order:true

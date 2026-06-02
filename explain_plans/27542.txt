@@ -1,0 +1,48 @@
+-- Query: 27542
+-- Source: SQLStorm v1.0 query 7963
+
+id	estRows	estCost	task	access object	operator info
+Sort_187	8.00	88817572720.78	root		Column#100:desc
+└─HashJoin_191	8.00	88817571281.61	root		inner join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.supplier.s_suppkey)]
+  ├─Selection_219(Build)	8.00	88674881034.05	root		not(isnull(tpch_sf40.supplier.s_suppkey))
+  │ └─TopN_222	10.00	88674880535.05	root		Column#154:desc, offset:0, count:10
+  │   └─HashAgg_229	319027.20	88621997146.65	root		group by:tpch_sf40.supplier.s_suppkey, funcs:sum(Column#153)->Column#154, funcs:firstrow(tpch_sf40.supplier.s_suppkey)->tpch_sf40.supplier.s_suppkey
+  │     └─HashJoin_237	117262166.20	76872523764.93	root		inner join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)]
+  │       ├─HashAgg_300(Build)	9056406.28	11443200327.17	root		group by:Column#172, funcs:sum(Column#171)->Column#153, funcs:firstrow(Column#172)->tpch_sf40.orders.o_orderkey
+  │       │ └─Projection_399	36739527.26	8197859791.26	root		mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#171, tpch_sf40.orders.o_orderkey->Column#172
+  │       │   └─IndexHashJoin_317	36739527.26	7272042074.00	root		inner join, inner:TableReader_312, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+  │       │     ├─TableReader_356(Build)	9120184.33	2205320488.53	root		MppVersion: 2, data:ExchangeSender_355
+  │       │     │ └─ExchangeSender_355	9120184.33	3768580000.00	mpp[tiflash]		ExchangeType: PassThrough
+  │       │     │   └─TableFullScan_353	9120184.33	3480580000.00	mpp[tiflash]	table:o	pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1996-01-01), lt(tpch_sf40.orders.o_orderdate, 1997-01-01), keep order:false
+  │       │     └─TableReader_312(Probe)	9120184.33	340.80	root		data:TableRangeScan_311
+  │       │       └─TableRangeScan_311	9120184.33	333.12	cop[tikv]	table:l	range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+  │       └─IndexHashJoin_259(Probe)	771446030.47	25943394173.65	root		inner join, inner:IndexReader_256, outer key:tpch_sf40.partsupp.ps_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.partsupp.ps_partkey, tpch_sf40.lineitem.l_partkey)
+  │         ├─IndexHashJoin_271(Build)	25600000.00	566614275.73	root		inner join, inner:IndexReader_268, outer key:tpch_sf40.supplier.s_suppkey, inner key:tpch_sf40.partsupp.ps_suppkey, equal cond:eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_suppkey)
+  │         │ ├─Selection_278(Build)	319027.20	20297308.03	root		not(isnull(tpch_sf40.supplier.s_suppkey))
+  │         │ │ └─CTEFullScan_280	398784.00	397986.43	root	CTE:suppliercosts AS sc	data:CTE_0
+  │         │ └─IndexReader_268(Probe)	25600000.00	14204.30	root		index:IndexRangeScan_267
+  │         │   └─IndexRangeScan_267	25600000.00	18240.09	cop[tikv]	table:ps, index:idx_partsupp_fk1(ps_suppkey)	range: decided by [eq(tpch_sf40.partsupp.ps_suppkey, tpch_sf40.supplier.s_suppkey)], keep order:false
+  │         └─IndexReader_256(Probe)	771446030.47	5588.76	root		index:IndexRangeScan_255
+  │           └─IndexRangeScan_255	771446030.47	7358.87	cop[tikv]	table:l, index:idx_lineitem_fk2(l_partkey, l_suppkey)	range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.partsupp.ps_partkey)], keep order:false
+  └─HashJoin_203(Probe)	320000.00	126719875.37	root		inner join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.supplier.s_suppkey)]
+    ├─Selection_210(Build)	319027.20	20297308.03	root		not(isnull(tpch_sf40.supplier.s_suppkey))
+    │ └─CTEFullScan_212	398784.00	397986.43	root	CTE:suppliercosts AS sc	data:CTE_0
+    └─TableReader_218(Probe)	400000.00	51559494.65	root		MppVersion: 2, data:ExchangeSender_217
+      └─ExchangeSender_217	400000.00	30298989.31	mpp[tiflash]		ExchangeType: PassThrough
+        └─TableFullScan_216	400000.00	30298989.31	mpp[tiflash]	table:s	keep order:false
+CTE_0	398784.00	397986.43	root		Non-Recursive CTE
+└─TableReader_178(Seed Part)	398784.00	1310379190.07	root		MppVersion: 2, data:ExchangeSender_177
+  └─ExchangeSender_177	398784.00	2578646789.74	mpp[tiflash]		ExchangeType: PassThrough
+    └─Projection_73	398784.00	2578646789.74	mpp[tiflash]		tpch_sf40.supplier.s_suppkey, Column#13
+      └─Projection_173	398784.00	2578637218.93	mpp[tiflash]		Column#13, tpch_sf40.supplier.s_suppkey
+        └─HashAgg_174	398784.00	2578627648.11	mpp[tiflash]		group by:tpch_sf40.supplier.s_suppkey, funcs:sum(Column#160)->Column#13, funcs:firstrow(tpch_sf40.supplier.s_suppkey)->tpch_sf40.supplier.s_suppkey, stream_count: 2
+          └─ExchangeReceiver_176	398784.00	2575273005.10	mpp[tiflash]		stream_count: 2
+            └─ExchangeSender_175	398784.00	2556131373.10	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.supplier.s_suppkey, collate: binary], stream_count: 2
+              └─HashAgg_171	398784.00	2556131373.10	mpp[tiflash]		group by:Column#163, funcs:sum(Column#162)->Column#160
+                └─Projection_179	32097576.63	3247602114.27	mpp[tiflash]		mul(tpch_sf40.partsupp.ps_supplycost, cast(tpch_sf40.partsupp.ps_availqty, decimal(10,0) BINARY))->Column#162, tpch_sf40.supplier.s_suppkey->Column#163
+                  └─Projection_145	32097576.63	2438759231.91	mpp[tiflash]		tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_availqty, tpch_sf40.partsupp.ps_supplycost
+                    └─HashJoin_144	32097576.63	2437603719.15	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_suppkey)]
+                      ├─ExchangeReceiver_113(Build)	400000.00	38224000.00	mpp[tiflash]		
+                      │ └─ExchangeSender_112	400000.00	19024000.00	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+                      │   └─TableFullScan_111	400000.00	19024000.00	mpp[tiflash]	table:s	keep order:false
+                      └─TableFullScan_114(Probe)	32000000.00	2347433052.48	mpp[tiflash]	table:ps	keep order:false

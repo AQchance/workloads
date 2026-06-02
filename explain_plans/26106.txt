@@ -1,0 +1,20 @@
+-- Query: 26106
+-- Source: SQLStorm v1.0 query 3896
+
+id	estRows	estCost	task	access object	operator info
+Projection_99	35334.10	450144946.77	root		tpch_sf40.part.p_name, tpch_sf40.part.p_retailprice, Column#123->Column#129, Column#124->Column#130, Column#126->Column#131
+└─Window_226	35334.10	450100867.48	root		row_number()->Column#126 over(partition by tpch_sf40.part.p_type order by tpch_sf40.part.p_retailprice desc rows between current row and current row)
+  └─Sort_225	35334.10	450100867.48	root		tpch_sf40.part.p_type, tpch_sf40.part.p_retailprice:desc
+    └─Projection_104	35334.10	421617069.68	root		tpch_sf40.part.p_name, tpch_sf40.part.p_retailprice, coalesce(Column#81, 0)->Column#123, coalesce(Column#106, 0)->Column#124, tpch_sf40.part.p_type
+      └─HashJoin_105	35334.10	419827450.66	root		CARTESIAN left outer join
+        ├─TableDual_223(Build)	0.00	0.00	root		rows:0
+        └─Selection_107(Probe)	35334.10	418944310.04	root		or(isnull(Column#81), gt(Column#81, 5000))
+          └─IndexJoin_120	44167.62	416740345.72	root		left outer join, inner:HashAgg_114, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.partsupp.ps_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)
+            ├─TableReader_179(Build)	44167.62	383401551.68	root		MppVersion: 2, data:ExchangeSender_178
+            │ └─ExchangeSender_178	44167.62	749814116.11	mpp[tiflash]		ExchangeType: PassThrough
+            │   └─Selection_177	44167.62	749814116.11	mpp[tiflash]		ge(tpch_sf40.part.p_size, 10), le(tpch_sf40.part.p_size, 20)
+            │     └─TableFullScan_176	200000.00	692214116.11	mpp[tiflash]	table:p	pushed down filter:like(tpch_sf40.part.p_mfgr, "Manufacturer%", 92), keep order:false, stats:partial[p_mfgr:unInitialized, ID 67:unInitialized]
+            └─HashAgg_114(Probe)	44167.62	2712.48	root		group by:tpch_sf40.partsupp.ps_partkey, funcs:sum(Column#134)->Column#81, funcs:firstrow(tpch_sf40.partsupp.ps_partkey)->tpch_sf40.partsupp.ps_partkey
+              └─TableReader_115	44167.62	1060.74	root		data:HashAgg_113
+                └─HashAgg_113	44167.62	1931.39	cop[tikv]		group by:tpch_sf40.partsupp.ps_partkey, funcs:sum(mul(tpch_sf40.partsupp.ps_supplycost, cast(tpch_sf40.partsupp.ps_availqty, decimal(10,0) BINARY)))->Column#134
+                  └─TableRangeScan_112	44167.62	304.59	cop[tikv]	table:ps	range: decided by [eq(tpch_sf40.partsupp.ps_partkey, tpch_sf40.part.p_partkey)], keep order:false

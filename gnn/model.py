@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import GATv2Conv, global_mean_pool, global_add_pool, global_max_pool
 
 from plan_parser import (
-    N_OP_CLASSES, N_LOCATIONS, N_JOIN_TYPES, N_EXCHANGE_TYPES,
+    N_OP_CLASSES, N_LOCATIONS, N_JOIN_TYPES, N_EXCHANGE_TYPES, N_ENGINE_TYPES,
 )
 
 # ─── Embedding dimensions ───
@@ -24,15 +24,17 @@ OP_CLASS_EMB_DIM = 32
 LOCATION_EMB_DIM = 8
 JOIN_TYPE_EMB_DIM = 8
 EXCHANGE_TYPE_EMB_DIM = 8
+ENGINE_TYPE_EMB_DIM = 8
 
-# After embedding expansion: 56 (embeddings) + 32 (scalar_proj) = 88
+# After embedding expansion: 64 (cat_emb) + 32 (scalar_proj) = 96
 NODE_ENC_INPUT_DIM = (
-    OP_CLASS_EMB_DIM + LOCATION_EMB_DIM + JOIN_TYPE_EMB_DIM + EXCHANGE_TYPE_EMB_DIM + 32
+    OP_CLASS_EMB_DIM + LOCATION_EMB_DIM + JOIN_TYPE_EMB_DIM
+    + EXCHANGE_TYPE_EMB_DIM + ENGINE_TYPE_EMB_DIM + 32
 )
 
-# Edge embedding: 1 (ratio) + 8 (loc_pair_emb) + 8 (exchange_emb) + 1 (is_build) = 18
+# Edge embedding: 1 (ratio) + 8 (loc_pair_emb) + 8 (exchange_emb) + 1 (is_build) + 1 (cross_engine) = 19
 EDGE_LOC_PAIR_EMB_DIM = 8
-EDGE_ENC_OUT_DIM = 1 + EDGE_LOC_PAIR_EMB_DIM + EXCHANGE_TYPE_EMB_DIM + 1  # = 18
+EDGE_ENC_OUT_DIM = 1 + EDGE_LOC_PAIR_EMB_DIM + EXCHANGE_TYPE_EMB_DIM + 1 + 1  # = 19
 
 HIDDEN_DIM = 128
 N_GAT_LAYERS = 3
@@ -56,6 +58,7 @@ class PlanGNN(nn.Module):
         self.location_emb = nn.Embedding(N_LOCATIONS, LOCATION_EMB_DIM)
         self.join_type_emb = nn.Embedding(N_JOIN_TYPES, JOIN_TYPE_EMB_DIM)
         self.exchange_type_emb = nn.Embedding(N_EXCHANGE_TYPES, EXCHANGE_TYPE_EMB_DIM)
+        self.engine_type_emb = nn.Embedding(N_ENGINE_TYPES, ENGINE_TYPE_EMB_DIM)
 
         # ─── Edge feature embeddings ───
         # loc_pair: 3×3 = 9 possible parent-child location pairs
@@ -66,7 +69,7 @@ class PlanGNN(nn.Module):
         # Scalar features need their own pathway: the 65-dim input has 56-dim embeddings
         # (op_class, location, join_type, exchange_type) but only 9 varying scalar dims.
         # Project scalars separately to give them comparable weight.
-        N_SCALAR = 9  # est_rows, stream, children, depth, n_equi, n_group, n_sort, has_filter, subtree
+        N_SCALAR = 12  # 9 base + 3 distributed (skew_log, n_tiflash, col_corr)
         self.scalar_proj = nn.Sequential(
             nn.Linear(N_SCALAR, 32),
             nn.LeakyReLU(0.1),
@@ -117,13 +120,12 @@ class PlanGNN(nn.Module):
         self.out_proj = nn.Identity()
 
         # ─── Global scalar skip connection ───
-        # Scalar features get a full-dimensional pathway (→ hidden_dim) so they
-        # carry equal weight to the GNN output. This lets the prediction head
-        # learn: output = GNN_template_base + scalar_delta.
+        # Aggregated scalar features capture graph-size-sensitive signals.
+        # Distributed additions: per-engine node counts, skew/col_corr aggregates.
         #
-        # 13 features: 9 scalar sums + n_nodes + 3 memory proxies
-        # Memory proxies: domain-knowledge estimates for hash-join, agg, and sort memory
-        N_GLOBAL = 10  # 9 scalar sums + n_nodes
+        # Base: 9 scalar sums + n_nodes = 10
+        # Distributed: 3 dist sums + 3 engine counts = 6
+        N_GLOBAL = 16
         self.global_skip = nn.Sequential(
             nn.Linear(N_GLOBAL, hidden_dim),
             nn.LeakyReLU(0.1),
@@ -163,20 +165,22 @@ class PlanGNN(nn.Module):
         Scalar features → separate MLP projection (32 dims).
         Total: 88 dims → node_encoder → hidden_dim.
         """
-        # ─── Categorical embeddings (56 dims total) ───
+        # ─── Categorical embeddings (64 dims total) ───
         op_class_id = x[:, 0].long()
         location_id = x[:, 2].long()
         join_type_id = x[:, 11].long()
         exchange_type_id = x[:, 12].long()
+        engine_type_id = x[:, 13].long()
 
         cat_emb = torch.cat([
             self.op_class_emb(op_class_id),          # 32
             self.location_emb(location_id),           # 8
             self.join_type_emb(join_type_id),         # 8
             self.exchange_type_emb(exchange_type_id), # 8
-        ], dim=-1)  # total: 56
+            self.engine_type_emb(engine_type_id),     # 8
+        ], dim=-1)  # total: 64
 
-        # ─── Scalar features (9 dims) with separate projection ───
+        # ─── Scalar features (12 dims) with separate projection ───
         scalars = torch.cat([
             x[:, 1:2],   # est_rows_log
             x[:, 3:4],   # stream_count
@@ -187,11 +191,14 @@ class PlanGNN(nn.Module):
             x[:, 8:9],   # n_sort_keys
             x[:, 9:10],  # has_filter
             x[:, 10:11], # subtree_est_rows_log
+            x[:, 14:15], # table_skew_log (new)
+            x[:, 15:16], # n_tiflash_instances (new)
+            x[:, 16:17], # avg_column_correlation (new)
         ], dim=-1)
 
-        scalar_proj = self.scalar_proj(scalars)  # 9 → 32
+        scalar_proj = self.scalar_proj(scalars)  # 12 → 32
 
-        return torch.cat([cat_emb, scalar_proj], dim=-1)  # 56 + 32 = 88
+        return torch.cat([cat_emb, scalar_proj], dim=-1)  # 64 + 32 = 96
 
     def _encode_edges(self, edge_attr: torch.Tensor) -> torch.Tensor:
         """Expand raw edge features (4-dim) to full edge features (18-dim)."""
@@ -251,7 +258,7 @@ class PlanGNN(nn.Module):
         plan_emb = self.out_proj(h_max + h_gated + h_sum)
 
         # ─── Global scalar skip: aggregate per-graph scalar features ───
-        # Use SUM pooling (not mean) to capture graph-size differences.
+        # Base 9 scalars
         node_scalars = torch.cat([
             data.x[:, 1:2],   # est_rows_log
             data.x[:, 3:4],   # stream_count
@@ -264,11 +271,34 @@ class PlanGNN(nn.Module):
             data.x[:, 10:11], # subtree_est
         ], dim=-1)  # [total_nodes, 9]
 
-        global_sum = global_add_pool(node_scalars, batch)         # [batch_size, 9] - size-sensitive
+        global_sum = global_add_pool(node_scalars, batch)  # [batch_size, 9]
 
-        # Add explicit n_nodes feature
-        n_nodes_per_graph = torch.bincount(batch + 1)[1:].float().unsqueeze(1)  # [batch_size, 1]
-        global_feat = self.global_skip(torch.cat([global_sum, n_nodes_per_graph], dim=-1))  # [batch_size, 128]
+        # ─── Distributed scalar aggregates ───
+        # Per-graph sums of table-skew and column-correlation signals
+        dist_scalars = torch.cat([
+            data.x[:, 14:15],  # table_skew_log (nonzero only for SCAN nodes)
+            data.x[:, 15:16],  # n_tiflash_instances
+            data.x[:, 16:17],  # avg_column_correlation
+        ], dim=-1)  # [total_nodes, 3]
+        dist_sum = global_add_pool(dist_scalars, batch)  # [batch_size, 3]
+
+        # ─── Per-graph engine-type node counts ───
+        engine_type_ids = data.x[:, 13].long()  # [total_nodes]
+        n_nodes_per_graph = torch.bincount(batch + 1)[1:].float().unsqueeze(1)
+        n_tidb = torch.zeros_like(n_nodes_per_graph)
+        n_tikv = torch.zeros_like(n_nodes_per_graph)
+        n_tiflash = torch.zeros_like(n_nodes_per_graph)
+        for g in range(int(batch.max().item()) + 1):
+            g_mask = (batch == g)
+            g_engines = engine_type_ids[g_mask]
+            n_tidb[g] = (g_engines == 0).sum().float()
+            n_tikv[g] = (g_engines == 1).sum().float()
+            n_tiflash[g] = (g_engines == 2).sum().float()
+        engine_counts = torch.cat([n_tidb, n_tikv, n_tiflash], dim=-1)  # [batch_size, 3]
+
+        global_feat = self.global_skip(
+            torch.cat([global_sum, n_nodes_per_graph, dist_sum, engine_counts], dim=-1)
+        )  # [batch_size, 128]
         plan_emb_aug = torch.cat([plan_emb, global_feat], dim=-1)  # [batch_size, 256]
 
         # ─── Predictions ───

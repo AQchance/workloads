@@ -1,0 +1,36 @@
+-- Query: 26697
+-- Source: SQLStorm v1.0 query 5879
+
+id	estRows	estCost	task	access object	operator info
+Sort_67	20.00	11855038284.28	root		tpch_sf40.region.r_name, Column#130:desc
+└─Projection_69	20.00	11855033611.00	root		tpch_sf40.region.r_name, tpch_sf40.nation.n_name, Column#130
+  └─HashJoin_72	20.00	11855033596.03	root		inner join, equal:[eq(tpch_sf40.nation.n_name, tpch_sf40.nation.n_name)]
+    ├─Selection_173(Build)	20.00	11855019200.37	root		le(Column#132, 10)
+    │ └─Window_176	25.00	11855017952.87	root		rank()->Column#132 over(order by Column#130 desc)
+    │   └─Sort_301	25.00	11855017952.87	root		Column#130:desc
+    │     └─HashAgg_181	25.00	11855011834.65	root		group by:Column#145, funcs:sum(Column#144)->Column#130, funcs:firstrow(Column#145)->tpch_sf40.nation.n_name
+    │       └─Projection_325	36998443.31	9085675445.86	root		mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#144, tpch_sf40.nation.n_name->Column#145
+    │         └─Projection_185	36998443.31	8153333173.65	root		tpch_sf40.lineitem.l_extendedprice, tpch_sf40.lineitem.l_discount, tpch_sf40.nation.n_name
+    │           └─IndexHashJoin_196	36998443.31	8125639838.83	root		inner join, inner:TableReader_191, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+    │             ├─TableReader_226(Build)	9184457.40	3014945327.66	root		MppVersion: 2, data:ExchangeSender_225
+    │             │ └─ExchangeSender_225	9184457.40	5201452597.85	mpp[tiflash]		ExchangeType: PassThrough
+    │             │   └─Projection_224	9184457.40	5201452597.85	mpp[tiflash]		tpch_sf40.nation.n_name, tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_custkey
+    │             │     └─HashJoin_206	9184457.40	5201121957.38	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+    │             │       ├─ExchangeReceiver_96(Build)	5999987.00	556891142.14	mpp[tiflash]		stream_count: 2
+    │             │       │ └─ExchangeSender_95	5999987.00	358891571.14	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+    │             │       │   └─Projection_94	5999987.00	358891571.14	mpp[tiflash]		tpch_sf40.nation.n_name, tpch_sf40.customer.c_custkey
+    │             │       │     └─HashJoin_89	5999987.00	358747571.45	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.nation.n_nationkey, tpch_sf40.customer.c_nationkey)]
+    │             │       │       ├─ExchangeReceiver_92(Build)	25.00	567519.34	mpp[tiflash]		
+    │             │       │       │ └─ExchangeSender_91	25.00	565339.09	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+    │             │       │       │   └─TableFullScan_90	25.00	565339.09	mpp[tiflash]	table:n	keep order:false
+    │             │       │       └─TableFullScan_93(Probe)	6000000.00	348580000.00	mpp[tiflash]	table:c	keep order:false
+    │             │       └─ExchangeReceiver_100(Probe)	9184457.40	4616635711.35	mpp[tiflash]		
+    │             │         └─ExchangeSender_99	9184457.40	4175781756.15	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+    │             │           └─TableFullScan_97	9184457.40	3887781756.15	mpp[tiflash]	table:o	pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1997-01-01), lt(tpch_sf40.orders.o_orderdate, 1998-01-01), keep order:false
+    │             └─TableReader_191(Probe)	9184457.40	340.80	root		data:TableRangeScan_190
+    │               └─TableRangeScan_190	9184457.40	333.12	cop[tikv]	table:l	range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false
+    └─HashJoin_152(Probe)	25.00	9363.16	root		inner join, equal:[eq(tpch_sf40.region.r_regionkey, tpch_sf40.nation.n_regionkey)]
+      ├─TableReader_164(Build)	5.00	998.73	root		data:TableFullScan_163
+      │ └─TableFullScan_163	5.00	1426.42	cop[tikv]	table:r	keep order:false
+      └─TableReader_169(Probe)	25.00	5092.10	root		data:TableFullScan_168
+        └─TableFullScan_168	25.00	7306.27	cop[tikv]	table:n	keep order:false

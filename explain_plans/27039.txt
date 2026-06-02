@@ -1,0 +1,32 @@
+-- Query: 27039
+-- Source: SQLStorm v1.0 query 6700
+
+id	estRows	estCost	task	access object	operator info
+Sort_182	5456608.94	26547669469.00	root		Column#137:desc
+└─Projection_184	5456608.94	20344919987.91	root		tpch_sf40.region.r_name, tpch_sf40.nation.n_name, tpch_sf40.customer.c_mktsegment, Column#137
+  └─Projection_185	5456608.94	20339474292.20	root		Column#137, tpch_sf40.customer.c_mktsegment, tpch_sf40.nation.n_name, tpch_sf40.region.r_name
+    └─HashJoin_187	5456608.94	20334028596.48	root		CARTESIAN inner join
+      ├─IndexJoin_192(Build)	1.00	2219.99	root		inner join, inner:TableReader_189, outer key:tpch_sf40.nation.n_regionkey, inner key:tpch_sf40.region.r_regionkey, equal cond:eq(tpch_sf40.nation.n_regionkey, tpch_sf40.region.r_regionkey)
+      │ ├─Point_Get_199(Build)	1.00	178.48	root	table:nation	handle:5
+      │ └─TableReader_189(Probe)	1.00	207.09	root		data:TableRangeScan_188
+      │   └─TableRangeScan_188	1.00	283.51	cop[tikv]	table:r	range: decided by [tpch_sf40.nation.n_regionkey], keep order:false
+      └─StreamAgg_212(Probe)	5456608.94	20197882426.66	root		group by:tpch_sf40.customer.c_mktsegment, funcs:sum(Column#129)->Column#137, funcs:firstrow(tpch_sf40.customer.c_mktsegment)->tpch_sf40.customer.c_mktsegment
+        └─Selection_387	5456608.94	19650590007.07	root		le(Column#131, 10)
+          └─Window_389	6820761.17	19310234024.74	root		row_number()->Column#131 over(partition by tpch_sf40.customer.c_mktsegment order by Column#129 desc rows between current row and current row)
+            └─Sort_351	6820761.17	19310234024.74	root		tpch_sf40.customer.c_mktsegment, Column#129:desc
+              └─HashAgg_255	6820761.17	11515434632.09	root		group by:Column#177, Column#178, Column#179, funcs:sum(Column#176)->Column#129, funcs:firstrow(Column#177)->tpch_sf40.customer.c_mktsegment
+                └─Projection_392	27670086.04	7348774130.52	root		mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#176, tpch_sf40.customer.c_mktsegment->Column#177, tpch_sf40.orders.o_orderkey->Column#178, tpch_sf40.orders.o_orderdate->Column#179
+                  └─Projection_259	27670086.04	6637694424.31	root		tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_orderdate, tpch_sf40.customer.c_mktsegment, tpch_sf40.lineitem.l_extendedprice, tpch_sf40.lineitem.l_discount
+                    └─IndexHashJoin_270	27670086.04	6603175991.97	root		inner join, inner:TableReader_265, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)
+                      ├─TableReader_324(Build)	6868795.11	2785840345.12	root		MppVersion: 2, data:ExchangeSender_323
+                      │ └─ExchangeSender_323	6868795.11	5057894815.92	mpp[tiflash]		ExchangeType: PassThrough
+                      │   └─Projection_322	6868795.11	5057894815.92	mpp[tiflash]		tpch_sf40.customer.c_mktsegment, tpch_sf40.orders.o_orderkey, tpch_sf40.orders.o_orderdate, tpch_sf40.orders.o_custkey
+                      │     └─HashJoin_295	6868795.11	5057565113.76	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)], stream_count: 2
+                      │       ├─ExchangeReceiver_225(Build)	6000000.00	528423120.09	mpp[tiflash]		stream_count: 2
+                      │       │ └─ExchangeSender_224	6000000.00	344343120.09	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.customer.c_custkey, collate: binary], stream_count: 2
+                      │       │   └─TableFullScan_223	6000000.00	344343120.09	mpp[tiflash]	table:c	keep order:false
+                      │       └─ExchangeReceiver_229(Probe)	6868795.11	4505483921.49	mpp[tiflash]		
+                      │         └─ExchangeSender_228	6868795.11	4175781756.15	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_custkey, collate: binary]
+                      │           └─TableFullScan_226	6868795.11	3887781756.15	mpp[tiflash]	table:o	pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1997-01-01 00:00:00.000000), lt(tpch_sf40.orders.o_orderdate, 1997-10-01 00:00:00.000000), keep order:false
+                      └─TableReader_265(Probe)	6868795.11	340.80	root		data:TableRangeScan_264
+                        └─TableRangeScan_264	6868795.11	333.12	cop[tikv]	table:l	range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false

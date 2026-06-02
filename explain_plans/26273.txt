@@ -1,0 +1,56 @@
+-- Query: 26273
+-- Source: SQLStorm v1.0 query 4670
+
+id	estRows	estCost	task	access object	operator info
+Projection_65	100.00	20556020503.85	root		tpch_sf40.supplier.s_suppkey, tpch_sf40.supplier.s_name, tpch_sf40.part.p_partkey, tpch_sf40.part.p_name, coalesce(Column#106, 0)->Column#113, case(isnull(Column#55), No Orders, Orders Exist)->Column#114
+└─Sort_66	100.00	20556015414.05	root		Column#55:desc
+  └─HashJoin_69	100.00	20555977521.21	root		left outer join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.lineitem.l_suppkey)], other cond:or(eq(mod(tpch_sf40.lineitem.l_suppkey, 2), 0), like(tpch_sf40.supplier.s_name, "A%", 92))
+    ├─TopN_72(Build)	100.00	11570639914.43	root		Column#55:desc, offset:0, count:100
+    │ └─HashJoin_78	8084.56	11567955711.62	root		left outer join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.supplier.s_suppkey)], other cond:or(eq(mod(tpch_sf40.supplier.s_suppkey, 2), 0), like(tpch_sf40.supplier.s_name, "A%", 92))
+    │   ├─TopN_82(Build)	100.00	1310848104.37	root		Column#55:desc, offset:0, count:100
+    │   │ └─TableReader_181	100.00	1310813491.53	root		MppVersion: 2, data:ExchangeSender_180
+    │   │   └─ExchangeSender_180	100.00	2621610923.06	mpp[tiflash]		ExchangeType: PassThrough
+    │   │     └─TopN_179	100.00	2621610923.06	mpp[tiflash]		Column#55:desc, offset:0, count:100
+    │   │       └─Selection_178	255221.92	2617540979.51	mpp[tiflash]		gt(Column#55, 1000.00)
+    │   │         └─Projection_172	319027.40	2616775313.75	mpp[tiflash]		Column#55, tpch_sf40.supplier.s_suppkey, tpch_sf40.supplier.s_name
+    │   │           └─HashAgg_173	319027.40	2616763828.77	mpp[tiflash]		group by:tpch_sf40.supplier.s_name, tpch_sf40.supplier.s_suppkey, funcs:sum(Column#123)->Column#55, funcs:firstrow(tpch_sf40.supplier.s_suppkey)->tpch_sf40.supplier.s_suppkey, funcs:firstrow(tpch_sf40.supplier.s_name)->tpch_sf40.supplier.s_name, stream_count: 2
+    │   │             └─ExchangeReceiver_175	319027.40	2612728379.19	mpp[tiflash]		stream_count: 2
+    │   │               └─ExchangeSender_174	319027.40	2589439379.03	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.supplier.s_suppkey, collate: binary], [name: tpch_sf40.supplier.s_name, collate: utf8mb4_bin], stream_count: 2
+    │   │                 └─HashAgg_170	319027.40	2589439379.03	mpp[tiflash]		group by:Column#138, Column#139, funcs:sum(Column#137)->Column#123
+    │   │                   └─Projection_343	25678077.36	3117318928.84	mpp[tiflash]		mul(tpch_sf40.partsupp.ps_supplycost, cast(tpch_sf40.partsupp.ps_availqty, decimal(10,0) BINARY))->Column#137, tpch_sf40.supplier.s_suppkey->Column#138, tpch_sf40.supplier.s_name->Column#139
+    │   │                     └─Projection_159	25678077.36	2463837538.23	mpp[tiflash]		tpch_sf40.supplier.s_suppkey, tpch_sf40.supplier.s_name, tpch_sf40.partsupp.ps_availqty, tpch_sf40.partsupp.ps_supplycost
+    │   │                       └─HashJoin_158	25678077.36	2462604990.52	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_suppkey)], other cond:or(eq(mod(tpch_sf40.partsupp.ps_suppkey, 2), 0), like(tpch_sf40.supplier.s_name, "A%", 92))
+    │   │                         ├─ExchangeReceiver_126(Build)	320000.20	63253270.92	mpp[tiflash]		
+    │   │                         │ └─ExchangeSender_125	320000.20	26053247.67	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+    │   │                         │   └─Selection_124	320000.20	26053247.67	mpp[tiflash]		or(eq(mod(tpch_sf40.supplier.s_suppkey, 2), 0), like(tpch_sf40.supplier.s_name, "A%", 92))
+    │   │                         │     └─TableFullScan_123	400000.00	25093247.67	mpp[tiflash]	table:s	pushed down filter:empty, keep order:false
+    │   │                         └─TableFullScan_127(Probe)	32000000.00	2347433052.48	mpp[tiflash]	table:ps	keep order:false
+    │   └─TableReader_311(Probe)	23194762.83	9099676005.07	root		MppVersion: 2, data:ExchangeSender_310
+    │     └─ExchangeSender_310	23194762.83	10238909407.10	mpp[tiflash]		ExchangeType: PassThrough
+    │       └─Selection_185	23194762.83	10238909407.10	mpp[tiflash]		eq(Column#89, 1), stream_count: 2
+    │         └─Window_309	28993453.54	10169325118.61	mpp[tiflash]		row_number()->Column#89 over(partition by tpch_sf40.supplier.s_suppkey order by tpch_sf40.partsupp.ps_availqty desc rows between current row and current row), stream_count: 2
+    │           └─Sort_204	28993453.54	10169325118.61	mpp[tiflash]		tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_availqty:desc, stream_count: 2
+    │             └─ExchangeReceiver_203	28993453.54	8229833058.42	mpp[tiflash]		stream_count: 2
+    │               └─ExchangeSender_202	28993453.54	3938801934.99	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.supplier.s_suppkey, collate: binary], stream_count: 2
+    │                 └─Projection_201	28993453.54	3938801934.99	mpp[tiflash]		tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_availqty, tpch_sf40.part.p_partkey, tpch_sf40.part.p_name, tpch_sf40.partsupp.ps_partkey
+    │                   └─HashJoin_188	28993453.54	3937062327.78	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.partsupp.ps_partkey, tpch_sf40.part.p_partkey)], stream_count: 2
+    │                     ├─ExchangeReceiver_200(Build)	8000000.00	952738200.15	mpp[tiflash]		stream_count: 2
+    │                     │ └─ExchangeSender_199	8000000.00	531378200.15	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.part.p_partkey, collate: binary], stream_count: 2
+    │                     │   └─TableFullScan_198	8000000.00	531378200.15	mpp[tiflash]	table:p	keep order:false
+    │                     └─ExchangeReceiver_197(Probe)	28865418.45	2918316791.45	mpp[tiflash]		
+    │                       └─ExchangeSender_196	28865418.45	2225546748.74	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.partsupp.ps_partkey, collate: binary]
+    │                         └─Projection_195	28865418.45	2225546748.74	mpp[tiflash]		tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_partkey, tpch_sf40.partsupp.ps_availqty
+    │                           └─HashJoin_189	28865418.45	2224507593.68	mpp[tiflash]		inner join, equal:[eq(tpch_sf40.supplier.s_suppkey, tpch_sf40.partsupp.ps_suppkey)]
+    │                             ├─ExchangeReceiver_193(Build)	359720.84	98562402.18	mpp[tiflash]		
+    │                             │ └─ExchangeSender_192	359720.84	29496000.00	mpp[tiflash]		ExchangeType: Broadcast, Compression: FAST
+    │                             │   └─Selection_191	359720.84	29496000.00	mpp[tiflash]		gt(tpch_sf40.supplier.s_acctbal, 100.00)
+    │                             │     └─TableFullScan_190	400000.00	28536000.00	mpp[tiflash]	table:s	pushed down filter:empty, keep order:false
+    │                             └─TableFullScan_194(Probe)	32000000.00	2073785935.92	mpp[tiflash]	table:ps	keep order:false
+    └─TableReader_339(Probe)	398784.00	8965422868.09	root		MppVersion: 2, data:ExchangeSender_338
+      └─ExchangeSender_338	398784.00	17888734145.61	mpp[tiflash]		ExchangeType: PassThrough
+        └─Projection_334	398784.00	17888734145.61	mpp[tiflash]		div(Column#106, cast(case(eq(Column#130, 0), 1, Column#130), decimal(20,0) BINARY))->Column#106, tpch_sf40.lineitem.l_suppkey
+          └─HashAgg_335	398784.00	17888250819.40	mpp[tiflash]		group by:tpch_sf40.lineitem.l_suppkey, funcs:sum(Column#131)->Column#130, funcs:sum(Column#132)->Column#106, funcs:firstrow(tpch_sf40.lineitem.l_suppkey)->tpch_sf40.lineitem.l_suppkey, stream_count: 2
+            └─ExchangeReceiver_337	398784.00	17884337878.78	mpp[tiflash]		stream_count: 2
+              └─ExchangeSender_336	398784.00	17862005974.69	mpp[tiflash]		ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.lineitem.l_suppkey, collate: binary], stream_count: 2
+                └─HashAgg_316	398784.00	17862005974.69	mpp[tiflash]		group by:tpch_sf40.lineitem.l_suppkey, funcs:count(tpch_sf40.lineitem.l_discount)->Column#131, funcs:sum(tpch_sf40.lineitem.l_discount)->Column#132
+                  └─TableFullScan_333	240012290.00	16705551384.00	mpp[tiflash]	table:l	keep order:false
