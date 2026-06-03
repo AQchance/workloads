@@ -21,7 +21,7 @@ SQL_DIR="/home/anqian/Desktop/my_lab/workloads/SQLStorm"
 RESULT_FILE="/home/anqian/Desktop/my_lab/workloads/sqlstorm_results.txt"
 ANALYZE_DIR="/home/anqian/Desktop/my_lab/workloads/explain_analyze_results"
 PLAN_DIR="/home/anqian/Desktop/my_lab/workloads/explain_plans"
-MIN_QUERY=25247  # start from first new query ID
+MIN_QUERY=25424  # resume from here
 TIMEOUT_SEC=600 # 10 minutes
 
 MYSQL_BASE="docker exec tidb1 mysql -h 127.0.0.1 -P 4000 -u root -D tpch_sf40"
