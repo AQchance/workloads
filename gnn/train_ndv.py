@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from model import PlanGNN
 
 # ─── Constants ───
-NODE_RAW_DIM = 20  # 13 base + 3 NDV + 4 distributed
+NODE_RAW_DIM = 22  # 13 base + 3 NDV + 4 distributed + 2 exchange_bytes
 EDGE_RAW_DIM = 5   # 4 base + cross_engine
 
 N_LOCATIONS = 3
@@ -154,6 +154,34 @@ def compute_ndv_features(lines: list, ndv_cache: dict) -> list:
     return results
 
 
+def _compute_subtree_columns(lines: list, start_idx: int) -> set:
+    """Collect all tpch_sf40.table.column references in a node's subtree."""
+    stripped_start = lines[start_idx].lstrip(' │├└─')
+    start_depth = (len(lines[start_idx]) - len(stripped_start)) // 2
+    cols = set()
+    for j in range(start_idx + 1, len(lines)):
+        stripped = lines[j].lstrip(' │├└─')
+        depth = (len(lines[j]) - len(stripped)) // 2
+        if depth <= start_depth:
+            break
+        parts = stripped.split('\t')
+        if len(parts) < 5:
+            continue
+        op_info = parts[4].strip() if len(parts) > 4 else ''
+        for tbl, col in re.findall(r'tpch_sf40\.(\w+)\.(\w+)', op_info):
+            cols.add(f'{tbl}.{col}')
+    return cols
+
+
+def _exchange_row_width(cols: set, ndv_cache: dict) -> float:
+    """Compute row width from column set using NDV cache avg_width."""
+    width = 0
+    for col_key in cols:
+        info = ndv_cache.get(col_key, {'avg_width': 8})
+        width += info.get('avg_width', 8)
+    return width if width > 0 else 8
+
+
 def parse_plan(plan_text: str, ndv_cache: dict,
                dist_cache: Optional[dict] = None) -> Optional[Data]:
     """Parse EXPLAIN plan into PyG Data with NDV + distributed features."""
@@ -221,6 +249,10 @@ def parse_plan(plan_text: str, ndv_cache: dict,
             c_info = col_stats.get(table_name, {})
             col_corr = c_info.get("avg_correlation", 0.0)
 
+        # ─── Exchange bytes features (computed after all nodes parsed) ───
+        exch_row_width_log = 0.0
+        exch_est_bytes_log = 0.0
+
         nodes.append({
             "depth": depth, "op_class": op_class, "est_rows": est_rows,
             "location_id": loc_id, "engine_type_id": eng_id,
@@ -232,7 +264,19 @@ def parse_plan(plan_text: str, ndv_cache: dict,
             "table_skew_log": t_skew_log,
             "n_tiflash_instances": n_tif,
             "column_corr": col_corr,
+            # Exchange bytes (filled below for Exchange nodes)
+            "exch_row_width_log": exch_row_width_log,
+            "exch_est_bytes_log": exch_est_bytes_log,
+            "_line_idx": idx,
         })
+
+    # ─── Post-process: compute Exchange byte features ───
+    for n in nodes:
+        if n["op_class"] == 3:  # EXCHANGE
+            cols = _compute_subtree_columns(lines, n["_line_idx"])
+            row_width = _exchange_row_width(cols, ndv_cache)
+            n["exch_row_width_log"] = math.log(1.0 + row_width)
+            n["exch_est_bytes_log"] = math.log(1.0 + n["est_rows"] * row_width)
 
     # Edges
     edges, indent_stack = [], []
@@ -265,7 +309,7 @@ def parse_plan(plan_text: str, ndv_cache: dict,
     max_depth = max(n["depth"] for n in nodes) if nodes else 1
     for n in nodes: n["depth_ratio"] = n["depth"] / max(max_depth, 1)
 
-    # ─── Feature matrix [N, 20] ───
+    # ─── Feature matrix [N, 22] ───
     x_list = []
     for n in nodes:
         x_list.append([
@@ -289,6 +333,8 @@ def parse_plan(plan_text: str, ndv_cache: dict,
             n["table_skew_log"],                       # 17 (distributed)
             float(n["n_tiflash_instances"]),           # 18 (distributed)
             n["column_corr"],                          # 19 (distributed)
+            n["exch_row_width_log"],                   # 20 (exchange bytes)
+            n["exch_est_bytes_log"],                   # 21 (exchange bytes)
         ])
     x = torch.tensor(x_list, dtype=torch.float32)
 
@@ -352,8 +398,8 @@ def parse_time_ms(raw: str) -> float:
     return 0.0
 
 
-def parse_analyze(text: str) -> Optional[Dict]:
-    """Extract query-level resource labels."""
+def parse_analyze(text: str, ndv_cache: dict = None) -> Optional[Dict]:
+    """Extract query-level resource labels. Network label is bytes (not rows)."""
     lines = text.strip().split('\n')
     rows = []
     in_table = False
@@ -364,29 +410,55 @@ def parse_analyze(text: str) -> Optional[Dict]:
             if len(parts) >= 8: rows.append(parts)
     if not rows: return None
 
-    total_mem, total_disk, total_net = 0.0, 0.0, 0.0
+    # Build parsed rows with depth for subtree column lookup
+    parsed = []
     for row in rows:
         raw_id = row[0].strip()
-        exec_info = row[5].strip() if len(row) > 5 else ""
-        memory_str = row[7].strip() if len(row) > 7 else "N/A"
-        act_rows_str = row[2].strip() if len(row) > 2 else "0"
-
-        mem_val = parse_memory_bytes(memory_str)
-        if mem_val: total_mem += mem_val
-
+        stripped = raw_id.lstrip(' │├└─')
+        depth = (len(raw_id) - len(stripped)) // 2
         op_name = re.sub(r'^[│├└─\s]+', '', raw_id)
         op_name = re.sub(r'\(Build\)|\(Probe\)', '', op_name).strip()
         op_name = re.sub(r'_\d+$', '', op_name)
-        if op_name in ("TableFullScan", "TableRangeScan", "IndexRangeScan", "TableRowIDScan"):
-            m = re.search(r'data_scanned_rows:(\d+)', exec_info)
-            if m: total_disk += float(m.group(1))
-        if op_name in ("ExchangeSender", "ExchangeReceiver"):
-            try: total_net += float(act_rows_str)
-            except ValueError: pass
+        exec_info = row[5].strip() if len(row) > 5 else ""
+        op_info = row[6].strip() if len(row) > 6 else ""
+        memory_str = row[7].strip() if len(row) > 7 else "N/A"
+        act_rows_str = row[2].strip() if len(row) > 2 else "0"
+        try: act_rows = float(act_rows_str)
+        except ValueError: act_rows = 0.0
+        parsed.append({
+            "depth": depth, "op": op_name, "exec_info": exec_info,
+            "info": op_info, "memory": memory_str, "act_rows": act_rows,
+        })
 
-    cpu_time = parse_time_ms(rows[0][5].strip() if rows and len(rows[0]) > 5 else "")
-    return {"cpu_time_ms": max(cpu_time, 0), "memory_bytes": total_mem,
-            "disk_io_rows": total_disk, "network_rows": total_net}
+    total_mem, total_disk, total_net_bytes = 0.0, 0.0, 0.0
+    for i, p in enumerate(parsed):
+        op_name = p["op"]
+
+        mem_val = parse_memory_bytes(p["memory"])
+        if mem_val: total_mem += mem_val
+
+        if op_name in ("TableFullScan", "TableRangeScan", "IndexRangeScan", "TableRowIDScan"):
+            m = re.search(r'data_scanned_rows:(\d+)', p["exec_info"])
+            if m: total_disk += float(m.group(1))
+
+        if op_name in ("ExchangeSender", "ExchangeReceiver"):
+            # Compute row width from subtree columns
+            cols = set()
+            for j in range(i + 1, len(parsed)):
+                if parsed[j]["depth"] <= p["depth"]:
+                    break
+                for tbl, col in re.findall(r'tpch_sf40\.(\w+)\.(\w+)', parsed[j]["info"]):
+                    cols.add(f'{tbl}.{col}')
+            row_width = 8  # default
+            if ndv_cache and cols:
+                row_width = sum(
+                    ndv_cache.get(c, {}).get('avg_width', 8) for c in cols)
+                if row_width == 0: row_width = 8
+            total_net_bytes += p["act_rows"] * row_width
+
+    cpu_time = parse_time_ms(parsed[0]["exec_info"] if parsed else "")
+    return {"latency_ms": max(cpu_time, 0), "memory_bytes": total_mem,
+            "disk_io_rows": total_disk, "network_bytes": total_net_bytes}
 
 
 def load_dataset(plan_dir: str, analyze_dir: str, ndv_cache: dict,
@@ -402,7 +474,7 @@ def load_dataset(plan_dir: str, analyze_dir: str, ndv_cache: dict,
         with open(os.path.join(analyze_dir, fname)) as f: analyze_text = f.read()
 
         g = parse_plan(plan_text, ndv_cache, dist_cache)
-        lab = parse_analyze(analyze_text)
+        lab = parse_analyze(analyze_text, ndv_cache)
         if g is None or lab is None or g.x.shape[0] == 0:
             continue
         graphs.append(g)
@@ -413,7 +485,7 @@ def load_dataset(plan_dir: str, analyze_dir: str, ndv_cache: dict,
 
 
 def normalize_labels(labels: List[Dict]) -> Tuple[List[Dict], Dict]:
-    keys = ["cpu_time_ms", "memory_bytes", "disk_io_rows", "network_rows"]
+    keys = ["latency_ms", "memory_bytes", "disk_io_rows", "network_bytes"]
     log_labels = [{k: math.log(1.0 + max(l[k], 0)) for k in keys} for l in labels]
     stats = {}
     for k in keys:
@@ -459,7 +531,7 @@ def main():
     print(f"  {len(graphs)} aligned plan-label pairs")
 
     norm_labels, stats = normalize_labels(labels)
-    key_map = {'memory_bytes': 'mem', 'disk_io_rows': 'disk', 'network_rows': 'net', 'cpu_time_ms': 'cpu'}
+    key_map = {'memory_bytes': 'mem', 'disk_io_rows': 'disk', 'network_bytes': 'net', 'latency_ms': 'cpu'}
     for g, nl in zip(graphs, norm_labels):
         for rk, sk in key_map.items():
             setattr(g, f'y_{sk}', torch.tensor([nl[rk]], dtype=torch.float32))
@@ -477,172 +549,12 @@ def main():
     # ─── Model setup ───
     model = PlanGNN(hidden_dim=128, n_layers=3, n_heads=4, dropout=0.2)
 
-    # ─── Monkey-patch _encode_nodes for NDV + distributed features ───
-    # Base model expects 17 raw dims (13 base + 4 distributed).
-    # We have 20 (13 base + 4 distributed + 3 NDV).
-    # Strategy: use the native 17-dim encoding flow, then append NDV scalars at the end.
-    native_encode = model._encode_nodes
-
-    def patched_encode(self, x):
-        # Split: first 17 features = base + distributed (native format)
-        x_base = torch.cat([
-            x[:, :13],      # original 13 (cat + scalars)
-            x[:, 16:20],    # distributed 4 (engine_type, skew_log, n_tiflash, col_corr)
-        ], dim=-1)  # [N, 17]
-
-        # Run through native encoder (handles cat emb + scalar proj → 96 dims)
-        # But we can't just call native_encode because x_base has a different layout.
-        # Instead, manually construct the encoding matching the updated model.
-
-        # Cat embeddings (64 dims): op_class(0), location(2), join_type(11), exchange_type(12), engine_type(16)
-        op_class_id = x_base[:, 0].long()
-        location_id = x_base[:, 2].long()
-        join_type_id = x_base[:, 11].long()
-        exchange_type_id = x_base[:, 12].long()
-        engine_type_id = x[:, 16].long()  # from original x (not x_base)
-
-        cat_emb = torch.cat([
-            self.op_class_emb(op_class_id),          # 32
-            self.location_emb(location_id),           # 8
-            self.join_type_emb(join_type_id),         # 8
-            self.exchange_type_emb(exchange_type_id), # 8
-            self.engine_type_emb(engine_type_id),     # 8
-        ], dim=-1)  # 64
-
-        # Scalar features (12 dims): 9 base + 3 distributed
-        scalars = torch.cat([
-            x[:, 1:2],   # est_rows_log
-            x[:, 3:4],   # stream_count
-            x[:, 4:5],   # children_count
-            x[:, 5:6],   # depth_ratio
-            x[:, 6:7],   # n_equi_conds
-            x[:, 7:8],   # n_group_keys
-            x[:, 8:9],   # n_sort_keys
-            x[:, 9:10],  # has_filter
-            x[:, 10:11], # subtree_est_rows_log
-            x[:, 17:18], # table_skew_log (distributed)
-            x[:, 18:19], # n_tiflash_instances (distributed)
-            x[:, 19:20], # column_corr (distributed)
-        ], dim=-1)  # 12
-
-        scalar_proj = self.scalar_proj(scalars)  # 12 → 32
-
-        # NDV features (3 dims): appended directly
-        ndv_feats = x[:, 13:16]  # join_mem_log, agg_mem_log, sort_mem_log
-
-        return torch.cat([cat_emb, scalar_proj, ndv_feats], dim=-1)  # 64 + 32 + 3 = 99
-
-    model._encode_nodes = patched_encode.__get__(model, PlanGNN)
-
-    # ─── Monkey-patch _encode_edges for cross_engine ───
-    native_encode_edges = model._encode_edges
-
-    def patched_encode_edges(self, edge_attr):
-        # edge_attr columns: [0:branch_ratio, 1:loc_pair, 2:exchange_type, 3:is_build, 4:cross_engine]
-        branch_ratio = edge_attr[:, 0:1]
-        loc_pair_id = edge_attr[:, 1].long()
-        exchange_type_id = edge_attr[:, 2].long()
-        is_build = edge_attr[:, 3:4]
-        cross_engine = edge_attr[:, 4:5]  # new
-
-        return torch.cat([
-            branch_ratio,                              # 1
-            self.edge_loc_emb(loc_pair_id),            # 8
-            self.edge_exchange_emb(exchange_type_id),  # 8
-            is_build,                                  # 1
-            cross_engine,                              # 1 (new)
-        ], dim=-1)  # 19
-
-    model._encode_edges = patched_encode_edges.__get__(model, PlanGNN)
-
-    # ─── Patch node_encoder input layer: 99 → 128 ───
-    old_enc = model.node_encoder
-    old_in_dim = old_enc[0].weight.shape[1]  # 96 (from updated model.py)
-    new_first = torch.nn.Linear(99, 128)
-    with torch.no_grad():
-        new_first.weight.data[:, :old_in_dim] = old_enc[0].weight.data
-        new_first.bias.data = old_enc[0].bias.data
-    old_enc[0] = new_first
-    model.node_encoder = old_enc
-
-    # ─── Monkey-patch forward for global skip with engine counts ───
-    native_forward = model.forward
-
-    def patched_forward(self, data):
-        from torch_geometric.nn import global_max_pool, global_add_pool
-        x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
-
-        x = self._encode_nodes(x)
-        x = self.node_encoder(x)
-        e = self._encode_edges(edge_attr)
-
-        for conv, norm in zip(self.convs, self.norms):
-            x_new = conv(x, edge_index, edge_attr=e)
-            x = norm(x + x_new)
-
-        h_max = global_max_pool(x, batch)
-        gate_logits = self.gate_mlp(x).squeeze(-1)
-        h_gated_list = []
-        for g in range(int(batch.max().item()) + 1):
-            g_mask = (batch == g)
-            g_x = x[g_mask]
-            g_gate = F.softmax(gate_logits[g_mask], dim=0)
-            h_gated_list.append((g_gate.unsqueeze(0) @ g_x).squeeze(0))
-        h_gated = torch.stack(h_gated_list)
-        h_sum = global_add_pool(x, batch)
-        plan_emb = self.out_proj(h_max + h_gated + h_sum)
-
-        # ─── Global skip with engine counts and dist aggregates ───
-        node_scalars = torch.cat([
-            data.x[:, 1:2], data.x[:, 3:4], data.x[:, 4:5], data.x[:, 5:6],
-            data.x[:, 6:7], data.x[:, 7:8], data.x[:, 8:9], data.x[:, 9:10], data.x[:, 10:11],
-        ], dim=-1)
-        global_sum = global_add_pool(node_scalars, batch)
-
-        # Distributed scalar aggregates
-        dist_scalars = torch.cat([
-            data.x[:, 17:18],  # table_skew_log
-            data.x[:, 18:19],  # n_tiflash_instances
-            data.x[:, 19:20],  # column_corr
-        ], dim=-1)
-        dist_sum = global_add_pool(dist_scalars, batch)
-
-        n_nodes = torch.bincount(batch + 1)[1:].float().unsqueeze(1)
-
-        # Engine counts: always compute from features (robust to batching)
-        engine_ids = data.x[:, 16].long()
-        n_tidb = torch.zeros_like(n_nodes)
-        n_tikv = torch.zeros_like(n_nodes)
-        n_tiflash = torch.zeros_like(n_nodes)
-        for g in range(int(batch.max().item()) + 1):
-            g_mask = (batch == g)
-            g_engines = engine_ids[g_mask]
-            n_tidb[g] = (g_engines == 0).sum().float()
-            n_tikv[g] = (g_engines == 1).sum().float()
-            n_tiflash[g] = (g_engines == 2).sum().float()
-
-        engine_counts = torch.cat([n_tidb, n_tikv, n_tiflash], dim=-1)
-
-        global_feat = self.global_skip(
-            torch.cat([global_sum, n_nodes, dist_sum, engine_counts], dim=-1))
-
-        plan_emb_aug = torch.cat([plan_emb, global_feat], dim=-1)
-
-        node_mem = self.node_mem_head(x)
-
-        return {
-            "mem": self.mem_head(plan_emb_aug),
-            "disk": self.disk_head(plan_emb_aug),
-            "net": self.net_head(plan_emb_aug),
-            "cpu": self.cpu_head(plan_emb_aug),
-            "plan_emb": plan_emb,
-            "node_mem": node_mem,
-        }
-
-    model.forward = patched_forward.__get__(model, PlanGNN)
-
     n_params = sum(p.numel() for p in model.parameters())
     print(f"Model params: {n_params:,}")
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Device: {device}")
+    model = model.to(device)
 
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs, eta_min=1e-6)
@@ -652,7 +564,10 @@ def main():
 
     for epoch in range(1, args.epochs + 1):
         model.train()
+        train_loss = 0.0
+        n_batches = 0
         for data in train_loader:
+            data = data.to(device)
             opt.zero_grad()
             preds = model(data)
             loss = sum(F.huber_loss(preds[k].squeeze(-1), getattr(data, f'y_{k}').squeeze(-1))
@@ -660,6 +575,8 @@ def main():
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
+            train_loss += loss.item()
+            n_batches += 1
         scheduler.step()
 
         model.eval()
@@ -667,6 +584,7 @@ def main():
         n_b = 0
         with torch.no_grad():
             for data in val_loader:
+                data = data.to(device)
                 preds = model(data)
                 val_loss += sum(F.huber_loss(preds[k].squeeze(-1), getattr(data, f'y_{k}').squeeze(-1))
                                 for k in key_map.values()).item()
@@ -677,12 +595,12 @@ def main():
             best_val = val_loss
             best_state = {k: v.clone() for k, v in model.state_dict().items()}
 
-        if epoch % 50 == 0:
-            print(f'E{epoch:3d} val={val_loss:.4f} best={best_val:.4f}')
+        if epoch % 10 == 0 or epoch == 1:
+            print(f'E{epoch:3d} train={train_loss/n_batches:.4f} val={val_loss:.4f} best={best_val:.4f}')
 
-    os.makedirs('/home/anqian/Desktop/my_lab/workloads/checkpoints', exist_ok=True)
+    os.makedirs('checkpoints', exist_ok=True)
     ckpt_name = 'best_ndv.pt' if args.no_dist else 'best_dist.pt'
-    torch.save(best_state, f'/home/anqian/Desktop/my_lab/workloads/checkpoints/{ckpt_name}')
+    torch.save(best_state, f'checkpoints/{ckpt_name}')
     model.load_state_dict(best_state)
     model.eval()
 
@@ -691,22 +609,22 @@ def main():
     all_p, all_t = {k: [] for k in key_map.values()}, {k: [] for k in key_map.values()}
     with torch.no_grad():
         for data in test_loader:
-            # Handle DataLoader batching: n_tidb etc. need to be tensors in batch
+            data = data.to(device)
             preds = model(data)
             for k in key_map.values():
                 all_p[k].append(preds[k].squeeze(-1).cpu().numpy())
                 all_t[k].append(getattr(data, f'y_{k}').squeeze(-1).cpu().numpy())
 
-    rmap = {'mem': 'memory_bytes', 'disk': 'disk_io_rows', 'net': 'network_rows', 'cpu': 'cpu_time_ms'}
+    rmap = {'mem': 'memory_bytes', 'disk': 'disk_io_rows', 'net': 'network_bytes', 'cpu': 'latency_ms'}
     baseline = {'mem': (1.56, 11.41, 86.07, 0.78),
                 'disk': (1.18, 1.93, 2.44, 0.92),
-                'net': (1.58, 3.93, 5.19, 0.95),
+                'net': (0, 0, 0, 0),    # bytes-based, no prior baseline
                 'cpu': (1.71, 4.02, 6.01, 0.59)}
 
     mode_label = "BASE (no dist)" if args.no_dist else "FULL (with dist)"
     print(f"\n{'Dim':>8s}  {'P50':>8s} {'Δ':>6s}  {'P90':>8s} {'Δ':>6s}  {'P95':>8s} {'Δ':>6s}  {'R²':>8s} {'Δ':>6s}  [{mode_label}]")
     print("-" * 90)
-    for k, label in [('mem', 'Memory'), ('disk', 'DiskIO'), ('net', 'Network'), ('cpu', 'CPU')]:
+    for k, label in [('mem', 'Memory'), ('disk', 'DiskIO'), ('net', 'Network'), ('cpu', 'Latency')]:
         p = np.concatenate(all_p[k]).flatten()
         t = np.concatenate(all_t[k]).flatten()
         std, mn = stats[rmap[k]]['std'], stats[rmap[k]]['mean']
