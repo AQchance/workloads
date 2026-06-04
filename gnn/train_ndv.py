@@ -398,8 +398,40 @@ def parse_time_ms(raw: str) -> float:
     return 0.0
 
 
+def _col_width(col_name: str, ndv_cache: dict) -> int:
+    if ndv_cache and col_name in ndv_cache:
+        w = ndv_cache[col_name].get('avg_width', 8)
+        return max(int(w), 1)
+    return 8
+
+
+def _extract_join_keys(op_info: str) -> list:
+    keys = []
+    for t1, c1, t2, c2 in re.findall(
+        r'eq\(tpch_sf40\.(\w+)\.(\w+),\s*tpch_sf40\.(\w+)\.(\w+)\)', op_info):
+        keys.append((f'{t1}.{c1}', f'{t2}.{c2}'))
+    return keys
+
+
+def _extract_group_keys(op_info: str) -> list:
+    keys = []
+    for tbl, col in re.findall(r'tpch_sf40\.(\w+)\.(\w+)', op_info):
+        keys.append(f'{tbl}.{col}')
+    return keys
+
+
+def _extract_topn_count(op_info: str) -> int:
+    m = re.search(r'count:(\d+)', op_info)
+    if m: return int(m.group(1))
+    return 0
+
+
 def parse_analyze(text: str, ndv_cache: dict = None) -> Optional[Dict]:
-    """Extract query-level resource labels. Network label is bytes (not rows)."""
+    """Extract query-level resource labels using actRows-aware memory estimation.
+
+    For operators where actRows=0 (root-level operators), falls back to estRows.
+    This ensures every memory-intensive operator contributes to the label.
+    """
     lines = text.strip().split('\n')
     rows = []
     in_table = False
@@ -410,7 +442,6 @@ def parse_analyze(text: str, ndv_cache: dict = None) -> Optional[Dict]:
             if len(parts) >= 8: rows.append(parts)
     if not rows: return None
 
-    # Build parsed rows with depth for subtree column lookup
     parsed = []
     for row in rows:
         raw_id = row[0].strip()
@@ -421,46 +452,100 @@ def parse_analyze(text: str, ndv_cache: dict = None) -> Optional[Dict]:
         op_name = re.sub(r'_\d+$', '', op_name)
         exec_info = row[5].strip() if len(row) > 5 else ""
         op_info = row[6].strip() if len(row) > 6 else ""
-        memory_str = row[7].strip() if len(row) > 7 else "N/A"
         act_rows_str = row[2].strip() if len(row) > 2 else "0"
+        est_rows_str = row[1].strip() if len(row) > 1 else "1.0"
+        is_build = '(Build)' in raw_id
         try: act_rows = float(act_rows_str)
         except ValueError: act_rows = 0.0
+        try: est_rows = float(est_rows_str)
+        except ValueError: est_rows = 1.0
         parsed.append({
             "depth": depth, "op": op_name, "exec_info": exec_info,
-            "info": op_info, "memory": memory_str, "act_rows": act_rows,
+            "info": op_info, "act_rows": act_rows, "est_rows": est_rows,
+            "is_build": is_build,
         })
 
-    total_mem, total_disk, total_net_bytes = 0.0, 0.0, 0.0
+    indent_stack = []
+    children = {i: [] for i in range(len(parsed))}
+    for i, p in enumerate(parsed):
+        while indent_stack and indent_stack[-1][0] >= p["depth"]:
+            indent_stack.pop()
+        if indent_stack:
+            parent_idx = indent_stack[-1][1]
+            children[parent_idx].append(i)
+        indent_stack.append((p["depth"], i))
+
+    total_mem_bytes, total_disk, total_net_bytes = 0.0, 0.0, 0.0
+
     for i, p in enumerate(parsed):
         op_name = p["op"]
 
-        mem_val = parse_memory_bytes(p["memory"])
-        if mem_val: total_mem += mem_val
+        # -- Memory: actRows preferred, estRows fallback when actRows=0 --
+        if op_name in ('HashJoin', 'IndexHashJoin'):
+            join_key_width = 8
+            join_keys = _extract_join_keys(p["info"])
+            if join_keys:
+                join_key_width = sum(_col_width(k[0], ndv_cache) for k in join_keys)
+            build_rows = 0.0
+            for c_idx in children.get(i, []):
+                child = parsed[c_idx]
+                if child.get("is_build"):
+                    build_rows = child["act_rows"] if child["act_rows"] > 0 else child["est_rows"]
+                    break
+            if build_rows <= 0 and children.get(i):
+                child = parsed[children[i][0]]
+                build_rows = child["act_rows"] if child["act_rows"] > 0 else child["est_rows"]
+            if build_rows <= 0:
+                build_rows = max(p["est_rows"], 1.0)
+            total_mem_bytes += build_rows * join_key_width * 3.0
 
+        elif op_name in ('HashAgg', 'StreamAgg'):
+            rows = p["act_rows"] if p["act_rows"] > 0 else p["est_rows"]
+            if rows <= 0: rows = p["est_rows"]
+            group_keys = _extract_group_keys(p["info"])
+            n_aggs = max(len(re.findall(r'funcs:', p["info"])), 1)
+            group_key_width = sum(_col_width(k, ndv_cache) for k in group_keys) if group_keys else 8
+            total_mem_bytes += rows * (group_key_width + n_aggs * 8) * 2.0
+
+        elif op_name == 'Sort':
+            rows = p["act_rows"] if p["act_rows"] > 0 else p["est_rows"]
+            if p["act_rows"] == 0:
+                for c_idx in children.get(i, []):
+                    c = parsed[c_idx]
+                    c_rows = c["act_rows"] if c["act_rows"] > 0 else c["est_rows"]
+                    rows = max(rows, c_rows)
+            cols = _extract_group_keys(p["info"])
+            sort_width = (sum(_col_width(c, ndv_cache) for c in cols) if cols else 8) + 8
+            total_mem_bytes += rows * sort_width
+
+        elif op_name == 'TopN':
+            n = _extract_topn_count(p["info"]) or 10
+            total_mem_bytes += n * 32
+
+        # -- Disk IO --
         if op_name in ("TableFullScan", "TableRangeScan", "IndexRangeScan", "TableRowIDScan"):
             m = re.search(r'data_scanned_rows:(\d+)', p["exec_info"])
             if m: total_disk += float(m.group(1))
+            else: total_disk += p["act_rows"] if p["act_rows"] > 0 else p["est_rows"]
 
+        # -- Network bytes --
         if op_name in ("ExchangeSender", "ExchangeReceiver"):
-            # Compute row width from subtree columns
             cols = set()
             for j in range(i + 1, len(parsed)):
-                if parsed[j]["depth"] <= p["depth"]:
-                    break
+                if parsed[j]["depth"] <= p["depth"]: break
                 for tbl, col in re.findall(r'tpch_sf40\.(\w+)\.(\w+)', parsed[j]["info"]):
                     cols.add(f'{tbl}.{col}')
-            row_width = 8  # default
+            row_width = 8
             if ndv_cache and cols:
-                row_width = sum(
-                    ndv_cache.get(c, {}).get('avg_width', 8) for c in cols)
-                if row_width == 0: row_width = 8
-            total_net_bytes += p["act_rows"] * row_width
+                row_width = max(sum(ndv_cache.get(c, {}).get('avg_width', 8) for c in cols), 1)
+            rows = p["act_rows"] if p["act_rows"] > 0 else p["est_rows"]
+            total_net_bytes += rows * row_width
 
     cpu_time = parse_time_ms(parsed[0]["exec_info"] if parsed else "")
-    return {"latency_ms": max(cpu_time, 0), "memory_bytes": total_mem,
-            "disk_io_rows": total_disk, "network_bytes": total_net_bytes}
-
-
+    return {"latency_ms": max(cpu_time, 0),
+            "memory_bytes": total_mem_bytes,
+            "disk_io_rows": total_disk,
+            "network_bytes": total_net_bytes}
 def load_dataset(plan_dir: str, analyze_dir: str, ndv_cache: dict,
                  dist_cache: Optional[dict] = None):
     """Load all aligned plan-label pairs with NDV + distributed features."""
