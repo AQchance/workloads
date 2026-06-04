@@ -684,3 +684,53 @@ Stage III: 跨引擎融合 + TiDB Server 预测
 3. **训练时用 EXPLAIN ANALYZE per-segment actRows 作为 ground truth**：TiDB 的 EXPLAIN ANALYZE 在 MPP 模式下会显示每个 ExchangeReceiver 在各 segment 的实际行数（如 `├─ExchangeReceiver(Build)  │ rows: 1000000(seg0:500000, seg1:300000, seg2:200000)`）。这些 actRows 可用作训练标签来学习数据倾斜对 runtime 的影响，但不能用于推理特征（因为推理时没有 actRows）。
 
 4. **用 NDV 和表级统计作为近似**：对于无法获取 per-segment 特征的列，回退到使用全局 NDV 和表级统计（当前方案已有），并在 GNN 中增加一个"segment skew indicator"特征——用 region 数量的方差来估算数据倾斜程度。
+
+## 2026-06-03
+
+### 代码重构
+
+- **model.py 与 train_ndv.py 对齐**：去掉了 160+ 行 monkey-patch。model.py 原生支持 22 维节点特征（13 base + 3 NDV + 4 distributed + 2 exchange_bytes）+ 5 维边特征（含 cross_engine）。索引统一为 train_ndv 的数据格式。
+- **GPU/CPU 自动检测**：`torch.device('cuda' if torch.cuda.is_available() else 'cpu')`，一台机器有 GPU 就用，没有就回退 CPU。
+- **变量重命名**：`cpu_time_ms` → `latency_ms`（实际语义是墙钟时延，不是 CPU 资源），评估输出 `CPU` → `Latency`。
+- **Checkpoint 路径修正**：从硬编码旧路径改为相对路径 `checkpoints/`。
+
+### 网络 IO：行数 → 字节
+
+- **动机**：行数不能反映真实网络带宽占用，不同 Exchange 的行宽从 2B 到 146B 不等。
+- **做法**：新增 `_compute_subtree_columns()` 遍历 Exchange 子树收集列引用，从 NDV 缓存查 avg_width 求和。标签从 `Σ(actRows)` 改为 `Σ(actRows × row_width)`。节点特征新增 `exch_row_width_log` 和 `exch_est_bytes_log`，全局跳过新增 `exch_row_width_sum` 和 `exch_est_bytes_sum`。
+- **效果**：Network P50 从行数版 1.52 降至字节版 1.36。
+
+### 失败尝试
+
+- **损失加权（latency ×2, disk/net ×0.5）**：Latency P50 仅从 1.57→1.55，Disk/Memory 反而退化。已回退等权。结论：时延瓶颈不在注意力分配，在 EXPLAIN 计划的信息上限。
+- **列级 Cross-Attention（Lamba 风格基数校准）**：只在 SCAN 节点加了 per-column NDV/width 的 gated attention。Latency 无变化。已回退。结论：ndv_cache 缺少 correlation/null_ratio，且 1769 条数据不够学到有意义的列选择模式。
+
+### 最终结果（seed=42, epoch=400 best@E360）
+
+| 维度 | P50 | P90 | P95 | R² |
+|------|-----|-----|-----|-----|
+| DiskIO | 1.11 | 1.78 | 2.10 | 0.962 |
+| Network | 1.36 | 2.87 | 5.22 | 0.966 |
+| Memory | 1.52 | 27.50 | 119.15 | 0.763 |
+| Latency | 1.57 | 3.44 | 5.42 | 0.664 |
+
+### 多种子验证（seed=42, 123, 789, 2015）
+
+4 个 seed 全部收敛，无坍塌（vs 原始 CLAUDE.md 报告 7 中 1 坍塌）。代码重构可能提升了训练稳定性。Latency P50 在 1.52-1.74 之间波动，存在 seed 方差但所有 seed 可用。
+
+### 过拟合检查
+
+Train P50=1.56 vs Test P50=1.61，Train R²=0.68 vs Test R²=0.67。无过拟合迹象。Test 的 Max Q-error(31.8x) 甚至小于 Train(68.9x)。
+
+### 推理性能
+
+- 模型：347K 参数 / 1.3MB
+- CPU：P50=4.1ms, P95=4.4ms
+- GPU (GTX 1650)：P50=6.6ms, P95=7.8ms（kernel 启动开销 > 计算时间）
+- 比 Stage GCN（100ms）快一个数量级，比 Lamba（3.39MB）小 60%。
+
+### 论文调研
+
+- **Lamba**：用完整列级直方图 + cross-attention 校准优化器基数估计。当前条件不具备。
+- **Stage**：8 层 GCN + 系统状态特征（含并发数），预测单查询执行时间。层级联（cache+local+global），用绝对误差而非 Q-error。
+- **ICONQ**：Bi-LSTM 做并发查询 runtime 预测 + 贪心调度。下一步方向：将自己的 GNN plan_emb + resource profile 替换 ICONQ 的扁平查询特征，理论上优于 ICONQ（GNN 结构编码 > 手工扁平向量，显式资源画像 > 隐式推断）。

@@ -1,15 +1,16 @@
 """
 GNN model for query resource prediction.
 
-Node features (20 dims): 13 base + 3 NDV + 4 distributed
+Node features (22 dims): 13 base + 3 NDV + 4 distributed + 2 exchange_bytes
 Edge features (5 dims): 4 base + cross_engine flag
 
 Architecture:
-  Node Encoder (20-dim raw → 99-dim → 128-dim embeddings)
+  Node Encoder (22-dim raw → 99-dim → 128-dim embeddings)
   → GATv2Conv × 3 with edge features + residual + LayerNorm
+  → Column Cross-Attention (calibrate SCAN node estRows with column stats)
   → Hybrid Readout (max_pool + gated_attention + sum_pool) → 128-dim plan embedding
-  → Global scalar skip (16-dim → 128-dim)
-  → 4 independent prediction heads (memory, disk, network, CPU)
+  → Global scalar skip (20-dim → 128-dim)
+  → 4 independent prediction heads (memory, disk, network, latency)
 """
 
 from typing import Dict
@@ -22,6 +23,7 @@ from torch_geometric.nn import GATv2Conv, global_add_pool, global_max_pool
 from plan_parser import (
     N_OP_CLASSES, N_LOCATIONS, N_JOIN_TYPES, N_EXCHANGE_TYPES, N_ENGINE_TYPES,
 )
+
 
 # ─── Embedding dimensions ───
 OP_CLASS_EMB_DIM = 32
