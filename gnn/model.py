@@ -138,7 +138,8 @@ class PlanGNN(nn.Module):
         self.mem_head = self._make_head(hidden_dim * 2, head_hidden, dropout)
         self.disk_head = self._make_head(hidden_dim * 2, head_hidden, dropout)
         self.net_head = self._make_head(hidden_dim * 2, head_hidden, dropout)
-        self.cpu_head = self._make_head(hidden_dim * 2, head_hidden, dropout)
+        self.lat_head = self._make_head(hidden_dim * 2, head_hidden, dropout)
+        self.cpu_res_head = self._make_head(hidden_dim * 2, head_hidden, dropout)
 
     @staticmethod
     def _make_head(in_dim: int, hidden: int, dropout: float) -> nn.Sequential:
@@ -298,7 +299,8 @@ class PlanGNN(nn.Module):
             "mem": self.mem_head(plan_emb_aug),
             "disk": self.disk_head(plan_emb_aug),
             "net": self.net_head(plan_emb_aug),
-            "cpu": self.cpu_head(plan_emb_aug),
+            "lat": self.lat_head(plan_emb_aug),
+            "cpures": self.cpu_res_head(plan_emb_aug),
             "plan_emb": plan_emb,
             "node_mem": node_mem,
         }

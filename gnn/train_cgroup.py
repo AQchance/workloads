@@ -3,7 +3,7 @@ Train PlanGNN with cgroup-measured physical resource labels.
 Uses native PlanGNN (model.py) without monkey-patches.
 """
 
-import sys, os, json, math, argparse
+import sys, os, json, math, argparse, re
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -27,25 +27,77 @@ def load_cgroup_labels(cgroup_dir: str) -> dict:
             'network_bytes': sum(data['network_delta_bytes'].values()),
             'disk_bytes': sum(data['disk_delta_bytes'].values()),
             'latency_s': data['latency_s'],
+            'cpu_resource_s': 0.0,  # filled from EXPLAIN ANALYZE below
         }
     return labels
+
+
+def extract_cpu_resource(analyze_text: str) -> float:
+    """Extract CPU resource (CPU-seconds) from EXPLAIN ANALYZE.
+    TiFlash: Σ(tiflash_task.time × threads)
+    TiKV: Σ(cop_task.tot_proc_ms / 1000)
+    TiDB Server: root operator time
+    """
+    cpu = 0.0
+    in_table = False
+    for line in analyze_text.split('\n'):
+        if line.startswith('id\t'): in_table = True; continue
+        if in_table and '\t' in line:
+            parts = line.split('\t')
+            if len(parts) < 6: continue
+            exec_info = parts[5].strip() if len(parts) > 5 else ''
+
+            # TiFlash MPP: proc_max × threads × tasks (CPU-seconds)
+            # Two formats: "time:X" (old) or "proc max:X" (newer)
+            tft = re.search(r'tiflash_task:\{.*?(?:proc max|time):(\d+m)?([\d.]+)(m?s)\b.*?threads:(\d+)', exec_info)
+            if tft:
+                minutes = 0.0
+                if tft.group(1):  # e.g. "1m"
+                    minutes = float(tft.group(1).rstrip('m')) * 60
+                value = float(tft.group(2))
+                unit = tft.group(3)
+                if unit == 'ms': t = value / 1000
+                elif unit == 's': t = minutes + value
+                elif unit == 'm': t = value * 60
+                else: t = value
+                tasks_count = 1
+                tk = re.search(r'tasks:(\d+)', exec_info)
+                if tk: tasks_count = int(tk.group(1))
+                cpu += t * int(tft.group(4)) * tasks_count
+
+            # TiKV coprocessor: tot_proc
+            cp = re.search(r'tot_proc:\s*([\d.]+)(m|µ|u)?s', exec_info)
+            if cp:
+                t = float(cp.group(1))
+                unit = cp.group(2)
+                if unit == 'm': t /= 1000
+                if unit in ('µ','u'): t /= 1000000
+                cpu += t
+
+    return max(cpu, 0.001)
 
 
 def load_dataset(plan_dir, ndv_cache, dist_cache, cgroup_labels):
     from train_ndv import parse_plan
     graphs, labels_out, meta = [], [], []
+    analyze_dir = '/home/anqian/Desktop/my_lab/workloads/explain_analyze_results'
     for qid, clab in cgroup_labels.items():
         pf = os.path.join(plan_dir, f'{qid}.txt')
         if not os.path.exists(pf): continue
         with open(pf) as f: plan_text = f.read()
         g = parse_plan(plan_text, ndv_cache, dist_cache)
         if g is None or g.x.shape[0] == 0: continue
+        # Extract CPU resource from EXPLAIN ANALYZE
+        af = os.path.join(analyze_dir, f'{qid}.txt')
+        if os.path.exists(af):
+            with open(af) as f:
+                clab['cpu_resource_s'] = extract_cpu_resource(f.read())
         graphs.append(g); labels_out.append(clab); meta.append(qid)
     return graphs, labels_out, meta
 
 
 def normalize_labels(labels):
-    keys = ['memory_bytes', 'network_bytes', 'disk_bytes', 'latency_s']
+    keys = ['memory_bytes', 'network_bytes', 'disk_bytes', 'latency_s', 'cpu_resource_s']
     log_labels = [{k: math.log(1.0 + max(l[k], 1)) for k in keys} for l in labels]
     stats = {}
     for k in keys:
@@ -77,7 +129,9 @@ def main():
     print(f"Matched plans: {len(graphs)}")
 
     norm_labels, stats = normalize_labels(labels)
-    key_map = {'memory_bytes': 'mem', 'network_bytes': 'net', 'disk_bytes': 'disk', 'latency_s': 'cpu'}
+    key_map = {'memory_bytes': 'mem', 'network_bytes': 'net', 'disk_bytes': 'disk',
+               'latency_s': 'lat', 'cpu_resource_s': 'cpures'}
+    pred_keys = list(key_map.values())  # ['mem','net','disk','lat','cpures']
     for g, nl in zip(graphs, norm_labels):
         for rk, sk in key_map.items():
             setattr(g, f'y_{sk}', torch.tensor([nl[rk]], dtype=torch.float32))
@@ -106,7 +160,7 @@ def main():
             opt.zero_grad()
             preds = model(data)
             loss = sum(F.huber_loss(preds[k].squeeze(-1), getattr(data, f'y_{k}').squeeze(-1))
-                       for k in key_map.values())
+                       for k in pred_keys)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
@@ -118,7 +172,7 @@ def main():
             for data in val_loader:
                 preds = model(data)
                 val_loss += sum(F.huber_loss(preds[k].squeeze(-1), getattr(data, f'y_{k}').squeeze(-1)).item()
-                                for k in key_map.values())
+                                for k in pred_keys)
                 nb += 1
         val_loss /= max(nb, 1)
         if val_loss < best_val:
@@ -133,18 +187,19 @@ def main():
     model.eval()
 
     test_loader = DataLoader([graphs[i] for i in test_idx], batch_size=64)
-    rmap = {'mem': 'memory_bytes', 'disk': 'disk_bytes', 'net': 'network_bytes', 'cpu': 'latency_s'}
-    all_p, all_t = {k: [] for k in key_map.values()}, {k: [] for k in key_map.values()}
+    rmap = {'mem': 'memory_bytes', 'disk': 'disk_bytes', 'net': 'network_bytes',
+            'lat': 'latency_s', 'cpures': 'cpu_resource_s'}
+    all_p, all_t = {k: [] for k in pred_keys}, {k: [] for k in pred_keys}
     with torch.no_grad():
         for data in test_loader:
             preds = model(data)
-            for k in key_map.values():
+            for k in pred_keys:
                 all_p[k].append(preds[k].squeeze(-1).cpu().numpy())
                 all_t[k].append(getattr(data, f'y_{k}').squeeze(-1).cpu().numpy())
 
     print(f"\n{'Dim':>10s} {'P50':>8s} {'P80':>8s} {'P90':>8s} {'P95':>8s} {'P99':>8s} {'R²':>8s} {'<2x':>8s} {'<5x':>8s}")
     print('-' * 85)
-    for k, label in [('mem','Memory'), ('disk','DiskIO'), ('net','Network'), ('cpu','Latency')]:
+    for k, label in [('mem','Memory'), ('disk','DiskIO'), ('net','Network'), ('lat','Latency'), ('cpures','CPU_Res')]:
         p = np.concatenate(all_p[k]).flatten()
         t = np.concatenate(all_t[k]).flatten()
         std_k = stats[rmap[k]]['std']; mn_k = stats[rmap[k]]['mean']
