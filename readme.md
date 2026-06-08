@@ -776,3 +776,37 @@ Latency      1.62    2.59    3.41    5.11   0.599    66%    95%
 CPU_Res      1.64    2.79    4.03    6.91   0.632    66%    92%
 
 - run_concurrent.py里面是采集并发时间的
+- 下面是仅仅训练了并发度为2的情况下，并发时间的预测精度效果。
+
+  Pct  Q-error
+  P10:   1.06x    ← 10%的预测几乎完美
+  P20:   1.12x
+  P30:   1.18x
+  P40:   1.28x
+  P50:   1.37x    ← 一半在 37% 误差内
+  P60:   1.52x
+  P70:   1.71x
+  P75:   1.83x
+  P80:   2.01x    ← 80% 在 2 倍内
+  P85:   2.20x
+  P90:   2.67x
+  P92:   2.97x
+  P95:   3.42x
+  P97:   4.62x
+  P99:   6.94x
+
+  <2x: 78%   <3x: 92%   <5x: 97%
+
+60% 的预测在 1.5x 以内，78% 在 2x 以内。尾部（P99=6.94x）仍有少数查询偏差较大。
+- 运行步骤如下所示：
+  cd /home/anqian/Desktop/my_lab/workloads
+  source ../.venv/bin/activate
+
+  # Step 1: GNN 特征提取（已有 gnn_features.json 可跳过）
+  python lstm/extract_gnn_features.py
+
+  # Step 2: 构造训练数据（已有 train_data.npz/test_data.npz 可跳过）
+  python lstm/prepare_training_data.py
+
+  # Step 3: 训练 Bi-LSTM
+  python lstm/train_bilstm.py
