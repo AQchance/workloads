@@ -9,11 +9,12 @@ import subprocess, time, threading, os, random
 
 QUERY_DIR = '/home/anqian/Desktop/my_lab/workloads/SQLStorm'
 QUERY_ALL = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/selected_queries.txt'
-QUERY_R1  = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/remaining_r1.txt'
+QUERY_R1  = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/remaining_r1_k4.txt'
 OUT_DIR   = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent'
 MYSQL_CMD = ['mysql', '-h', '172.19.0.11', '-P', '4000', '-u', 'root', '-D', 'tpch_sf40']
 
-NUM_CLIENTS = 2
+NUM_CLIENTS = 4
+TOTAL_ROUNDS = 1         # just 1 round = 200 queries for testing
 TIMEOUT_S = 600
 PENALTY_S = 600
 COOLDOWN_S = 30

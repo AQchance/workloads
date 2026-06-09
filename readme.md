@@ -810,3 +810,14 @@ CPU_Res      1.64    2.79    4.03    6.91   0.632    66%    92%
 
   # Step 3: 训练 Bi-LSTM
   python lstm/train_bilstm.py
+
+- 下面是使用GNN提取的特征与使用iconq提取的特征训练Bi-LSTM的效果对比：
+
+● 结果鲜明：
+
+                      ICONQ(flat 100d)      GNN(270d)
+  P50                    2.14x               1.37x
+  P80                    3.96x               2.06x
+  P90                    5.99x               2.66x
+  P95                    10.37x              3.42x
+  R²                     0.128               0.701
