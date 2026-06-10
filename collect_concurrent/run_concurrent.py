@@ -9,15 +9,17 @@ import subprocess, time, threading, os, random
 
 QUERY_DIR = '/home/anqian/Desktop/my_lab/workloads/SQLStorm'
 QUERY_ALL = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/selected_queries.txt'
-QUERY_R1  = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/remaining_r1_k4.txt'
+QUERY_R1  = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/selected_queries.txt'
 OUT_DIR   = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent'
 MYSQL_CMD = ['mysql', '-h', '172.19.0.11', '-P', '4000', '-u', 'root', '-D', 'tpch_sf40']
 
 NUM_CLIENTS = 4
-TOTAL_ROUNDS = 1         # just 1 round = 200 queries for testing
+TOTAL_ROUNDS = 1         # 1 round = 1000 queries
 TIMEOUT_S = 600
 PENALTY_S = 600
 COOLDOWN_S = 30
+STAGGER_COUNT = 8        # first 8 queries staggered 5s apart
+STAGGER_DELAY = 5        # seconds between staggered starts
 
 start_time = 0.0
 csv_file = None
@@ -76,6 +78,10 @@ def execute_query(qid):
 
 def worker(wid):
     global query_pool
+    # Staggered start: first 8 workers start 5s apart to avoid crashing TiDB
+    if wid < STAGGER_COUNT:
+        time.sleep(wid * STAGGER_DELAY)
+
     while not stop_flag.is_set():
         with pool_lock:
             if len(query_pool) == 0:
