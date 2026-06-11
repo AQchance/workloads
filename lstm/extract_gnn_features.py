@@ -18,10 +18,10 @@ from model import PlanGNN
 from train_cgroup import load_cgroup_labels
 from train_ndv import load_ndv_cache, load_dist_cache, parse_plan
 
-TRACE_FILE = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/trace_2.csv'
+TRACE_FILE = sys.argv[1] if len(sys.argv) > 1 else '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/trace_2.csv'
 PLAN_DIR = '/home/anqian/Desktop/my_lab/workloads/explain_plans'
 CGROUP_DIR = '/home/anqian/Desktop/my_lab/workloads/cgroup_resources'
-OUT_FILE = '/home/anqian/Desktop/my_lab/workloads/lstm/gnn_features.json'
+OUT_FILE = sys.argv[2] if len(sys.argv) > 2 else '/home/anqian/Desktop/my_lab/workloads/lstm/gnn_features.json'
 
 # Load cgroup labels (serial runtimes + physical resources)
 cgroup_labels = load_cgroup_labels(CGROUP_DIR)

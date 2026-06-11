@@ -16,7 +16,7 @@ def resource_conflict(t_res, c_res):
     return list(np.minimum(t, c) / np.maximum(np.abs(t) + np.abs(c) + 1e-8, 1e-8))
 
 
-def build_dataset(trace_file, features_file):
+def build_dataset(trace_file, features_file, output_prefix='train_data'):
     with open(features_file) as f: gnn_features = json.load(f)
 
     trace = []
@@ -97,11 +97,12 @@ def build_dataset(trace_file, features_file):
     sl_te_arr = np.array(sl_te, dtype=np.float32)
 
     # Save
-    np.savez(os.path.join(OUT_DIR, 'train_data.npz'),
+    np.savez(os.path.join(OUT_DIR, f'{output_prefix}.npz'),
              X=(Xa - Xm) / Xs, lengths=tr_len,
              y=(y_log - ym) / ys, serial_lat=sl_tr_arr,
              y_mean=ym, y_std=ys)
-    np.savez(os.path.join(OUT_DIR, 'test_data.npz'),
+    test_prefix = output_prefix.replace('train', 'test')
+    np.savez(os.path.join(OUT_DIR, test_prefix + '.npz'),
              X=(Xta - Xm) / Xs, lengths=te_len,
              y=(np.log(1 + np.array(y_te, dtype=np.float32)) - ym) / ys,
              serial_lat=sl_te_arr,
@@ -116,5 +117,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--trace', default='/home/anqian/Desktop/my_lab/workloads/collect_concurrent/trace_2.csv',
                         help='Concurrent trace CSV file (trace_2.csv or trace_4.csv)')
+    parser.add_argument('--features', default=FEATURES_FILE,
+                        help='GNN features JSON file')
+    parser.add_argument('--output-prefix', default='train_data',
+                        help='Output file prefix (e.g. train_data_k4)')
     args = parser.parse_args()
-    build_dataset(args.trace, FEATURES_FILE)
+    build_dataset(args.trace, args.features, args.output_prefix)

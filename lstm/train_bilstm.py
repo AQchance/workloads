@@ -67,13 +67,14 @@ class ConcurrentBiLSTM(nn.Module):
         return self.predictor(final).squeeze(-1)
 
 
-def evaluate(model, loader, dataset):
+def evaluate(model, loader, dataset, device='cpu'):
     model.eval()
     all_pred, all_label = [], []
     with torch.no_grad():
         for X, lengths, y in loader:
-            all_pred.append(model(X, lengths).numpy())
-            all_label.append(y.numpy())
+            X, y = X.to(device), y.to(device)
+            all_pred.append(model(X, lengths).cpu().numpy())
+            all_label.append(y.cpu().numpy())
     p = np.concatenate(all_pred); t = np.concatenate(all_label)
     # Denorm using stored stats: z-scored log-ratio → ratio
     p_ratio = np.maximum(np.exp(p * dataset.y_std + dataset.y_mean) - 1, 0.01)
@@ -96,6 +97,10 @@ def main(trace_file, epochs=200, lr=1e-3, seed=42, prefix=''):
     model = ConcurrentBiLSTM(input_dim=train_ds.X.shape[2])
     print(f"Params: {sum(p.numel() for p in model.parameters()):,}")
 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Device: {device}")
+    model = model.to(device)
+
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=2e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs, eta_min=1e-6)
     best_val, best_state = float('inf'), None
@@ -103,6 +108,7 @@ def main(trace_file, epochs=200, lr=1e-3, seed=42, prefix=''):
     for epoch in range(1, epochs + 1):
         model.train()
         for X, lengths, y in train_loader:
+            X, y = X.to(device), y.to(device)
             opt.zero_grad()
             loss = nn.functional.huber_loss(model(X, lengths), y)
             loss.backward()
@@ -111,7 +117,7 @@ def main(trace_file, epochs=200, lr=1e-3, seed=42, prefix=''):
         scheduler.step()
 
         if epoch % 20 == 0 or epoch == 1:
-            _, _, qe = evaluate(model, test_loader, test_ds)
+            _, _, qe = evaluate(model, test_loader, test_ds, device)
             med = np.median(qe)
             if med < best_val:
                 best_val = med
@@ -119,7 +125,7 @@ def main(trace_file, epochs=200, lr=1e-3, seed=42, prefix=''):
             print(f'E{epoch:3d} val_med={med:.2f}x best={best_val:.2f}x')
 
     model.load_state_dict(best_state)
-    _, _, qe = evaluate(model, test_loader, test_ds)
+    _, _, qe = evaluate(model, test_loader, test_ds, device)
     qs = np.sort(qe); nq = len(qs)
 
     # Get serial latencies for R² on absolute runtime
@@ -148,8 +154,9 @@ def main(trace_file, epochs=200, lr=1e-3, seed=42, prefix=''):
     all_pred_ratio, all_true_ratio = [], []
     with torch.no_grad():
         for X, lengths, y in test_loader:
-            all_pred_ratio.append(model(X, lengths).numpy())
-            all_true_ratio.append(y.numpy())
+            X, y = X.to(device), y.to(device)
+            all_pred_ratio.append(model(X, lengths).cpu().numpy())
+            all_true_ratio.append(y.cpu().numpy())
     p_ratio = np.concatenate(all_pred_ratio); t_ratio = np.concatenate(all_true_ratio)
     pr = np.maximum(np.exp(p_ratio * test_ds.y_std + test_ds.y_mean) - 1, 0.01)
     tr = np.maximum(np.exp(t_ratio * test_ds.y_std + test_ds.y_mean) - 1, 0.01)
