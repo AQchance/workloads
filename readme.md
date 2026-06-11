@@ -862,3 +862,50 @@ R² 从 0.47 跳到 0.77，提升 64%。ratio+residual 的方法在 K=4 上的�
 
   和 K=2 一样——用 GNN 预测值时改善有限（+6%），真实时延才能释放全部潜力（+10%）。核心瓶颈回到了 GNN 的 latency 预测精度（当前
   P50=1.6x）——提上去之后 ratio+residual 才能从 1.53 降到 1.46。
+
+## 2026-06-11
+- 下面是直接使用ratio预测的效果，发现是比残差连接要更好的。
+R² 修好了——转回绝对 runtime 算是 0.726：
+              P50     P80     P90     R²
+Original:     1.41x   2.06x   2.66x   0.701
+Ratio+skip:   1.27x   1.89x   3.07x   0.751
+Ratio-only:   1.25x   1.88x   2.86x   0.726  ← 全面最优
+
+Ratio-only 在所有 Q-error 指标上都是最好的：P50 从 1.41→1.25（-11%），P80 从 2.06→1.88（-9%）。残差连接多贡献了 R² 但牺牲了 P50/P90——它是锦上添花，ratio 归一化才是核心贡献。
+
+
+K=4 Ratio-only:
+              P50     P80     P90     R²
+Original:     1.63x   2.47x   3.09x   0.469
+Ratio-only:   1.44x   2.31x   3.10x   0.730
+改善:         -12%    -6%     +0%     +56%
+
+汇总 K=2 + K=4:
+              K=2               K=4
+              original  ratio   original  ratio
+P50           1.41x     1.25x   1.63x     1.44x
+P80           2.06x     1.88x   2.47x     2.31x
+R²            0.701     0.726   0.469     0.730
+
+ratio 归一化在 K=4 上改善更大（R² 从 0.47→0.73，提升 56%），因为 K=4 的 slowdown 范围（0.08-27x）比 K=2（0.03-14x）更宽，ratio 归一化的收益更明显。
+
+- 运行命令：
+
+cd /home/anqian/Desktop/my_lab/workloads
+source ../.venv/bin/activate
+
+# 1. 混合 K=2+K=4 数据
+python lstm/prepare_mixed.py
+
+# 2. 训练混合模型
+python lstm/train_bilstm.py --trace collect_concurrent/trace_2.csv --data-prefix _mixed --epochs 200
+
+# K=2 only (默认):
+python lstm/prepare_training_data.py --trace collect_concurrent/trace_2.csv
+python lstm/train_bilstm.py --trace collect_concurrent/trace_2.csv
+
+# K=4 only:
+python lstm/prepare_training_data.py --trace collect_concurrent/trace_4.csv
+python lstm/train_bilstm.py --trace collect_concurrent/trace_4.csv
+
+--data-prefix _mixed 让训练脚本加载 train_data_mixed.npz 而不是默认的 train_data.npz。

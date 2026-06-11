@@ -1,173 +1,120 @@
 """
-Step 2: Build concurrent training dataset from trace and GNN features.
+Build training data with ratio labels + resource conflict vectors.
 
-For each query execution in the trace:
-  - Find overlapping queries (concurrently executing)
-  - Build interaction feature vectors (matching ICONQ format)
-  - Split by time: first 70% train, last 30% test
-
-Output: lstm/train_data.npz, lstm/test_data.npz
+Labels: slowdown_ratio = concurrent_runtime / serial_latency
+Features: interaction vectors with per-pair resource conflict (5 dims).
 """
 
-import sys, os, json, csv, math
-import numpy as np
+import sys, os, json, csv, math, numpy as np
 
 FEATURES_FILE = '/home/anqian/Desktop/my_lab/workloads/lstm/gnn_features.json'
-TRACE_FILE = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/trace_2.csv'
 OUT_DIR = '/home/anqian/Desktop/my_lab/workloads/lstm'
 
-PENALTY_ACTUAL_S = 60  # real wall-clock time for a TiDB restart cycle
 
-# Load GNN features
-with open(FEATURES_FILE) as f:
-    gnn_features = json.load(f)
-print(f"Loaded GNN features for {len(gnn_features)} queries")
+def resource_conflict(t_res, c_res):
+    t = np.array(t_res); c = np.array(c_res)
+    return list(np.minimum(t, c) / np.maximum(np.abs(t) + np.abs(c) + 1e-8, 1e-8))
 
-# Load trace
-trace = []
-with open(TRACE_FILE) as f:
-    for row in csv.DictReader(f):
-        trace.append(row)
-print(f"Loaded {len(trace)} trace entries")
 
-# Build execution timeline: [(start_s, end_s, qid, runtime, status)]
-timeline = []
-t = 0.0  # cumulative time
-for r in trace:
-    qid = r['qid']
-    runtime = float(r['runtime'])
-    status = r['status']
+def build_dataset(trace_file, features_file):
+    with open(features_file) as f: gnn_features = json.load(f)
 
-    if status == 'penalty':
-        # Penalty: actual restart time is ~60s, not 600s
-        actual_runtime = PENALTY_ACTUAL_S
-    else:
-        actual_runtime = runtime
+    trace = []
+    with open(trace_file) as f:
+        for row in csv.DictReader(f): trace.append(row)
 
-    # Start time from trace is relative to script start. But the script
-    # was restarted multiple times, so we need to detect timeline breaks.
-    # Use start field + cumulative offset.
-    start_in_batch = float(r['start'])
-    if len(timeline) == 0:
-        timeline.append((start_in_batch, start_in_batch + actual_runtime,
-                         qid, actual_runtime, status))
-    else:
-        timeline.append((start_in_batch, start_in_batch + actual_runtime,
-                         qid, actual_runtime, status))
+    timeline = []
+    for r in trace:
+        qid = r['qid']; rt = float(r['runtime']); st = r['status']
+        actual = 60.0 if st == 'penalty' else rt
+        s = float(r['start'])
+        timeline.append((s, s + actual, qid, actual, st))
 
-# Compute concurrent overlaps: for each query, find which other queries
-# have [start, end] overlapping with its [start, end]
-print("Computing concurrent overlaps...")
-concurrent_info = []  # list of (qid, start, end, runtime, status, [overlapping_qids])
+    ci = []
+    for i, (si, ei, qi, rti, sti) in enumerate(timeline):
+        ov = []
+        for j, (sj, ej, qj, _, _) in enumerate(timeline):
+            if i != j and sj < ei and ej > si: ov.append(qj)
+        ci.append((qi, si, ei, rti, sti, ov))
 
-for i, (start_i, end_i, qid_i, rt_i, st_i) in enumerate(timeline):
-    overlaps = []
-    for j, (start_j, end_j, qid_j, rt_j, st_j) in enumerate(timeline):
-        if i == j:
-            continue
-        # Overlap: execution windows intersect
-        if start_j < end_i and end_j > start_i:
-            overlaps.append(qid_j)
-    concurrent_info.append((qid_i, start_i, end_i, rt_i, st_i, overlaps))
+    mt = max(e for _, _, e, _, _, _ in ci); sp = mt * 0.7
+    train_d = [c for c in ci if c[1] < sp]
+    test_d  = [c for c in ci if c[1] >= sp]
 
-# Split by time: first 70% → train, last 30% → test
-max_time = max(e for _, _, e, _, _, _ in concurrent_info)
-split_time = max_time * 0.7
+    def build_seq(data_list):
+        X, y_ratio, slats = [], [], []
+        for qi, si, ei, rti, sti, ov in data_list:
+            if qi not in gnn_features or sti == 'penalty': continue
+            serial_lat = max(gnn_features[qi]['serial_labels'].get('latency_s', 1), 0.5)
+            sl = math.log(1 + serial_lat)
+            qv = gnn_features[qi]['plan_emb'] + list(gnn_features[qi]['gpu_resources'].values()) + [sl]
+            t_res = list(gnn_features[qi]['gpu_resources'].values())
+            seq = []; oi = []
+            for oq in ov:
+                if oq not in gnn_features: continue
+                for os, _, _, _, _ in [(ts, te, q, _, _) for ts, te, q, _, _ in timeline if q == oq]:
+                    oi.append((os, oq)); break
+            oi.sort()
+            for os, oq in oi:
+                osl = math.log(1 + gnn_features[oq]['serial_labels'].get('latency_s', 10))
+                ovv = gnn_features[oq]['plan_emb'] + list(gnn_features[oq]['gpu_resources'].values()) + [osl]
+                oc = list(gnn_features[oq]['gpu_resources'].values())
+                c = resource_conflict(t_res, oc)
+                feat = qv + ovv + [si - os, 1.0 if os < si else 0.0] + c
+                seq.append(feat)
+            if seq:
+                X.append(seq)
+                y_ratio.append(rti / serial_lat)   # ratio label
+                slats.append(serial_lat)
+        return X, y_ratio, slats
 
-train_data = [c for c in concurrent_info if c[1] < split_time]  # start time < split
-test_data = [c for c in concurrent_info if c[1] >= split_time]
+    X_tr, y_tr, sl_tr = build_seq(train_d)
+    X_te, y_te, sl_te = build_seq(test_d)
+    print(f"  Train: {len(X_tr)} seqs, Test: {len(X_te)} seqs")
+    print(f"  Ratio range: {min(y_tr):.2f} - {max(y_tr):.2f}, median={np.median(y_tr):.2f}")
 
-print(f"Train: {len(train_data)} executions")
-print(f"Test:  {len(test_data)} executions")
+    ml = max(max(len(s) for s in X_tr), max(len(s) for s in X_te))
+    d = len(X_tr[0][0])
+    print(f"  Max seq len: {ml}, feat dim: {d}")
 
-# Build feature vectors for each execution
-# Format: for each target query, build a list of interaction features
-# Each interaction feature = [gnn_vec(target), gnn_vec(concurrent), time_diff, flags]
+    Xa = np.zeros((len(X_tr), ml, d), dtype=np.float32)
+    for i, s in enumerate(X_tr): Xa[i, :len(s)] = s
+    Xta = np.zeros((len(X_te), ml, d), dtype=np.float32)
+    for i, s in enumerate(X_te): Xta[i, :len(s)] = s
 
-def build_dataset(concurrent_list):
-    X = []   # list of lists (variable-length sequences)
-    y = []   # runtimes
-    meta = []  # (qid, n_concurrent) for debugging
+    mask = np.zeros_like(Xa)
+    for i, s in enumerate(X_tr): mask[i, :len(s)] = 1.0
+    Xm = (Xa * mask).sum(axis=(0, 1)) / max(mask.sum(), 1)
+    diff = ((Xa - Xm) * mask) ** 2
+    Xs = np.sqrt(diff.sum(axis=(0, 1)) / max(mask.sum(), 1)) + 1e-8
 
-    for qid, start, end, runtime, status, overlaps in concurrent_list:
-        if qid not in gnn_features:
-            continue
+    y_log = np.log(1 + np.array(y_tr, dtype=np.float32))
+    ym, ys = y_log.mean(), y_log.std() + 1e-8
 
-        serial_lat = math.log(1 + gnn_features[qid]['serial_labels'].get('latency_s', 10))
-        target_vec = gnn_features[qid]['plan_emb'] + list(
-            gnn_features[qid]['gpu_resources'].values()) + [serial_lat]
-        # 128 plan_emb + 5 resources + 1 serial_lat = 134 dims per query
+    tr_len = np.array([len(s) for s in X_tr], dtype=np.int32)
+    te_len = np.array([len(s) for s in X_te], dtype=np.int32)
+    sl_tr_arr = np.array(sl_tr, dtype=np.float32)
+    sl_te_arr = np.array(sl_te, dtype=np.float32)
 
-        seq = []
-        # Sort concurrent queries by their start time
-        overlap_info = []
-        for oqid in overlaps:
-            if oqid not in gnn_features:
-                continue
-            # Find this overlapping query's timing in the timeline
-            for o_start, o_end, _, _, _ in [
-                (s, e, _, _, _) for s, e, q, _, _ in timeline if q == oqid
-            ]:
-                overlap_info.append((o_start, oqid))
-                break
+    # Save
+    np.savez(os.path.join(OUT_DIR, 'train_data.npz'),
+             X=(Xa - Xm) / Xs, lengths=tr_len,
+             y=(y_log - ym) / ys, serial_lat=sl_tr_arr,
+             y_mean=ym, y_std=ys)
+    np.savez(os.path.join(OUT_DIR, 'test_data.npz'),
+             X=(Xta - Xm) / Xs, lengths=te_len,
+             y=(np.log(1 + np.array(y_te, dtype=np.float32)) - ym) / ys,
+             serial_lat=sl_te_arr,
+             y_mean=ym, y_std=ys)
 
-        overlap_info.sort()
+    print(f"  Saved: train_data.npz ({os.path.getsize(os.path.join(OUT_DIR, 'train_data.npz'))/1024:.0f} KB)")
+    print(f"  Saved: test_data.npz ({os.path.getsize(os.path.join(OUT_DIR, 'test_data.npz'))/1024:.0f} KB)")
 
-        for o_start, oqid in overlap_info:
-            o_serial_lat = math.log(1 + gnn_features[oqid]['serial_labels'].get('latency_s', 10))
-            ovec = gnn_features[oqid]['plan_emb'] + list(
-                gnn_features[oqid]['gpu_resources'].values()) + [o_serial_lat]
-            # Interaction feature: [target_vec, concurrent_vec, time_diff, is_before]
-            time_diff = start - o_start  # negative if oqid started before target
-            is_before = 1.0 if o_start < start else 0.0
-            feat = target_vec + ovec + [time_diff, is_before]
-            seq.append(feat)
 
-        # Add the target query itself
-        if len(seq) > 0:
-            X.append(seq)
-            y.append(runtime)
-            meta.append((qid, len(overlaps)))
-
-    return X, y, meta
-
-print("\nBuilding training features...")
-X_train, y_train, meta_train = build_dataset(train_data)
-print(f"Train sequences: {len(X_train)}")
-
-print("Building test features...")
-X_test, y_test, meta_test = build_dataset(test_data)
-print(f"Test sequences: {len(X_test)}")
-
-# Save as numpy arrays with padding
-# We'll use a simple format: each sequence padded to max length
-# with metadata about original length
-
-def pad_and_save(X, y, meta, prefix):
-    max_len = max(len(seq) for seq in X)
-    feat_dim = len(X[0][0])
-    print(f"  {prefix}: max_seq_len={max_len}, feat_dim={feat_dim}")
-
-    padded = np.zeros((len(X), max_len, feat_dim), dtype=np.float32)
-    lengths = np.zeros(len(X), dtype=np.int32)
-    labels = np.array(y, dtype=np.float32)
-
-    for i, seq in enumerate(X):
-        padded[i, :len(seq)] = seq
-        lengths[i] = len(seq)
-
-    out_path = os.path.join(OUT_DIR, f'{prefix}_data.npz')
-    np.savez(out_path, X=padded, lengths=lengths, y=labels)
-    print(f"  Saved: {out_path} ({os.path.getsize(out_path)/1024:.0f} KB)")
-
-pad_and_save(X_train, y_train, meta_train, 'train')
-pad_and_save(X_test, y_test, meta_test, 'test')
-
-# Stats
-print(f"\n=== Dataset stats ===")
-for name, X_set, y_set in [('Train', X_train, y_train), ('Test', X_test, y_test)]:
-    seq_lens = [len(s) for s in X_set]
-    rt = np.array(y_set)
-    print(f"  {name}: {len(X_set)} samples, "
-          f"seq_len mean={np.mean(seq_lens):.1f} max={max(seq_lens)}, "
-          f"runtime median={np.median(rt):.1f}s mean={np.mean(rt):.1f}s")
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--trace', default='/home/anqian/Desktop/my_lab/workloads/collect_concurrent/trace_2.csv',
+                        help='Concurrent trace CSV file (trace_2.csv or trace_4.csv)')
+    args = parser.parse_args()
+    build_dataset(args.trace, FEATURES_FILE)

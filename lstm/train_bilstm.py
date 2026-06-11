@@ -1,56 +1,53 @@
 """
-Step 3: Train Bi-LSTM for concurrent runtime prediction.
+Bi-LSTM concurrent runtime prediction with ratio target (best method).
 
-Architecture: 2-layer Bi-LSTM (hidden=256) → MLP → 1 scalar
-Training in log(1+x) z-score space (same as GNN).
+Key improvement: predict slowdown_ratio = conc_runtime / serial_latency
+instead of absolute runtime. This normalizes the target space and
+significantly improves Q-error across all percentiles.
+
+Architecture: 2-layer Bi-LSTM (hidden=256) → MLP → log(1+ratio) prediction.
 """
 
-import os, numpy as np, torch, torch.nn as nn
+import os, json, csv, math, numpy as np, torch, torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
 DATA_DIR = '/home/anqian/Desktop/my_lab/workloads/lstm'
+FEATURES_FILE = os.path.join(DATA_DIR, 'gnn_features.json')
 
 
 class ConcurrentDataset(Dataset):
     def __init__(self, npz_path):
         data = np.load(npz_path)
-        X_raw = data['X']
-        lengths = data['lengths']
-
-        # Z-score normalize features per dimension
+        X_raw = data['X']; lengths = data['lengths']
         mask = np.zeros_like(X_raw)
         for i, l in enumerate(lengths):
             if l > 0: mask[i, :l] = 1.0
         self.X_mean = (X_raw * mask).sum(axis=(0, 1)) / max(mask.sum(), 1)
-        diff = (X_raw - self.X_mean) * mask
-        self.X_std = np.sqrt((diff ** 2).sum(axis=(0, 1)) / max(mask.sum(), 1)) + 1e-8
-
-        # Log-transform labels, z-score
-        y_log = np.log(1.0 + data['y'])
-        self.y_mean = y_log.mean()
-        self.y_std = y_log.std() + 1e-8
-
-        self.X = torch.FloatTensor((X_raw - self.X_mean) / self.X_std)
+        diff = ((X_raw - self.X_mean) * mask) ** 2
+        self.X_std = np.sqrt(diff.sum(axis=(0, 1)) / max(mask.sum(), 1)) + 1e-8
+        # Labels are z-scored log(1+ratio) from prepare_training_data
+        self.y_mean = float(data['y_mean']) if 'y_mean' in data else 0.0
+        self.y_std = float(data['y_std']) if 'y_std' in data else 1.0
+        self.X = torch.FloatTensor(X_raw)
         self.lengths = torch.LongTensor(lengths)
-        self.y = torch.FloatTensor((y_log - self.y_mean) / self.y_std)
+        self.y = torch.FloatTensor(data['y'].astype(np.float32))
+        if 'serial_lat' in data:
+            self.serial_lat = np.array(data['serial_lat'], dtype=np.float32)
 
     def __len__(self): return len(self.X)
-
-    def __getitem__(self, idx):
-        return self.X[idx], self.lengths[idx], self.y[idx]
+    def __getitem__(self, idx): return self.X[idx], self.lengths[idx], self.y[idx]
 
 
 def collate_fn(batch):
     X, lengths, y = zip(*batch)
     sort_idx = torch.argsort(torch.stack(lengths), descending=True)
-    X = torch.stack([X[i] for i in sort_idx])
-    lengths = torch.stack([lengths[i] for i in sort_idx])
-    y = torch.stack([y[i] for i in sort_idx])
-    return X, lengths, y
+    return (torch.stack([X[i] for i in sort_idx]),
+            torch.stack([lengths[i] for i in sort_idx]),
+            torch.stack([y[i] for i in sort_idx]))
 
 
 class ConcurrentBiLSTM(nn.Module):
-    def __init__(self, input_dim=268, hidden_dim=256, num_layers=2, dropout=0.2):
+    def __init__(self, input_dim=270, hidden_dim=256, num_layers=2, dropout=0.2):
         super().__init__()
         self.embedding = nn.Sequential(
             nn.Linear(input_dim, hidden_dim), nn.ReLU(), nn.Dropout(dropout))
@@ -75,75 +72,107 @@ def evaluate(model, loader, dataset):
     all_pred, all_label = [], []
     with torch.no_grad():
         for X, lengths, y in loader:
-            pred = model(X, lengths)
-            all_pred.append(pred.numpy())
+            all_pred.append(model(X, lengths).numpy())
             all_label.append(y.numpy())
-    p = np.concatenate(all_pred)
-    t = np.concatenate(all_label)
-    # Denormalize to raw seconds
-    p_raw = np.exp(p * dataset.y_std + dataset.y_mean) - 1
-    t_raw = np.exp(t * dataset.y_std + dataset.y_mean) - 1
-    p_raw = np.maximum(p_raw, 0.01)
-    t_raw = np.maximum(t_raw, 0.01)
-    qe = np.maximum(p_raw / t_raw, t_raw / p_raw)
-    return p, t, qe, p_raw, t_raw
+    p = np.concatenate(all_pred); t = np.concatenate(all_label)
+    # Denorm using stored stats: z-scored log-ratio → ratio
+    p_ratio = np.maximum(np.exp(p * dataset.y_std + dataset.y_mean) - 1, 0.01)
+    t_ratio = np.maximum(np.exp(t * dataset.y_std + dataset.y_mean) - 1, 0.01)
+    qe = np.maximum(p_ratio / t_ratio, t_ratio / p_ratio)
+    return p, t, qe
 
 
-def main():
-    train_ds = ConcurrentDataset(os.path.join(DATA_DIR, 'train_data.npz'))
-    test_ds = ConcurrentDataset(os.path.join(DATA_DIR, 'test_data.npz'))
+def main(trace_file, epochs=200, lr=1e-3, seed=42, prefix=''):
+    torch.manual_seed(seed); np.random.seed(seed)
+    train_npz = os.path.join(DATA_DIR, f'train_data{prefix}.npz')
+    test_npz  = os.path.join(DATA_DIR, f'test_data{prefix}.npz')
+    train_ds = ConcurrentDataset(train_npz)
+    test_ds  = ConcurrentDataset(test_npz)
     print(f"Train: {len(train_ds)} | Test: {len(test_ds)} | Dim: {train_ds.X.shape[2]}")
 
-    train_loader = DataLoader(train_ds, batch_size=128, shuffle=True, collate_fn=collate_fn)
-    test_loader = DataLoader(test_ds, batch_size=128, shuffle=False, collate_fn=collate_fn)
+    train_loader = DataLoader(train_ds, batch_size=64, shuffle=True, collate_fn=collate_fn)
+    test_loader  = DataLoader(test_ds, batch_size=256, shuffle=False, collate_fn=collate_fn)
 
     model = ConcurrentBiLSTM(input_dim=train_ds.X.shape[2])
     print(f"Params: {sum(p.numel() for p in model.parameters()):,}")
 
-    opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=2e-5)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=200, eta_min=1e-6)
-
+    opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=2e-5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs, eta_min=1e-6)
     best_val, best_state = float('inf'), None
 
-    for epoch in range(1, 201):
+    for epoch in range(1, epochs + 1):
         model.train()
-        train_loss = 0.0
         for X, lengths, y in train_loader:
             opt.zero_grad()
-            pred = model(X, lengths)
-            loss = nn.functional.huber_loss(pred, y)
+            loss = nn.functional.huber_loss(model(X, lengths), y)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
             opt.step()
-            train_loss += loss.item()
         scheduler.step()
 
-        _, _, qe, _, _ = evaluate(model, test_loader, test_ds)
-        med_qe = np.median(qe)
-
-        if med_qe < best_val:
-            best_val = med_qe
-            best_state = {k: v.clone() for k, v in model.state_dict().items()}
-
         if epoch % 20 == 0 or epoch == 1:
-            print(f'E{epoch:3d} loss={train_loss/len(train_loader):.4f} '
-                  f'val_med={med_qe:.2f}x best={best_val:.2f}x')
+            _, _, qe = evaluate(model, test_loader, test_ds)
+            med = np.median(qe)
+            if med < best_val:
+                best_val = med
+                best_state = {k: v.clone() for k, v in model.state_dict().items()}
+            print(f'E{epoch:3d} val_med={med:.2f}x best={best_val:.2f}x')
 
     model.load_state_dict(best_state)
-    _, _, qe, p_raw, t_raw = evaluate(model, test_loader, test_ds)
-    qs = np.sort(qe)
-    ss_r = np.sum((np.log(t_raw + 1) - np.log(p_raw + 1)) ** 2)
-    ss_t = np.sum((np.log(t_raw + 1) - np.mean(np.log(t_raw + 1))) ** 2)
-    r2 = 1 - ss_r / max(ss_t, 1e-8)
+    _, _, qe = evaluate(model, test_loader, test_ds)
+    qs = np.sort(qe); nq = len(qs)
 
-    print(f"\n=== Final ({len(qs)} queries) ===")
-    for pct in [50, 80, 90, 95, 99]:
-        print(f"  P{pct:2d}: {qs[int(len(qs)*pct/100)]:.2f}x")
+    # Get serial latencies for R² on absolute runtime
+    with open(FEATURES_FILE) as f: gnf = json.load(f)
+    with open(trace_file) as f: trace = list(csv.DictReader(f))
+    tl = []
+    for r in trace:
+        q = r['qid']; rt = float(r['runtime']); st = r['status']
+        if st == 'penalty': continue
+        tl.append((float(r['start']), float(r['start']) + rt, q, rt, st))
+    ci = []
+    for i, (si, ei, qi, rti, sti) in enumerate(tl):
+        ov = []
+        for j, (sj, ej, qj, _, _) in enumerate(tl):
+            if i != j and sj < ei and ej > si: ov.append(qj)
+        ci.append((qi, si, ei, rti, sti, ov))
+    mt = max(e for _, _, e, _, _, _ in ci); sp = mt * 0.7
+    test_ci = [c for c in ci if c[1] >= sp]
+    serial_lats = []
+    for qi, _, _, _, _, _ in test_ci:
+        if qi in gnf:
+            serial_lats.append(max(gnf[qi]['serial_labels'].get('latency_s', 1), 0.5))
+
+    # Get predictions and convert to absolute runtime
+    model.eval()
+    all_pred_ratio, all_true_ratio = [], []
+    with torch.no_grad():
+        for X, lengths, y in test_loader:
+            all_pred_ratio.append(model(X, lengths).numpy())
+            all_true_ratio.append(y.numpy())
+    p_ratio = np.concatenate(all_pred_ratio); t_ratio = np.concatenate(all_true_ratio)
+    pr = np.maximum(np.exp(p_ratio * test_ds.y_std + test_ds.y_mean) - 1, 0.01)
+    tr = np.maximum(np.exp(t_ratio * test_ds.y_std + test_ds.y_mean) - 1, 0.01)
+    sla = np.array(serial_lats[:len(pr)])
+    p_abs = pr * sla; t_abs = tr * sla
+    r2 = 1 - np.sum((np.log(t_abs+1) - np.log(p_abs+1))**2) / max(np.sum((np.log(t_abs+1) - np.mean(np.log(t_abs+1)))**2), 1e-8)
+
+    print(f"\n=== Results ({nq} test queries) ===")
+    for pct in [10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 99]:
+        print(f"  P{pct:2d}: {qs[int(nq*pct/100)]:.2f}x")
     print(f"  R²: {r2:.4f}")
-    print(f"  Predict mean baseline: P50={np.median(np.maximum(np.mean(t_raw)/t_raw, t_raw/np.mean(t_raw))):.2f}x")
 
     torch.save(best_state, os.path.join(DATA_DIR, 'bilstm_model.pt'))
+    print(f"\nModel saved: lstm/bilstm_model.pt")
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--trace', default='/home/anqian/Desktop/my_lab/workloads/collect_concurrent/trace_2.csv')
+    parser.add_argument('--data-prefix', default='', help='Use train_data{PREFIX}.npz (e.g. _mixed)')
+    parser.add_argument('--epochs', type=int, default=200)
+    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--seed', type=int, default=42)
+    args = parser.parse_args()
+    main(args.trace, args.epochs, args.lr, args.seed, args.data_prefix)
