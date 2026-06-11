@@ -10,8 +10,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from train_bilstm import ConcurrentBiLSTM, collate_fn
 
 FEATURES_FILE = '/home/anqian/Desktop/my_lab/workloads/lstm/gnn_features.json'
+GNN_LAT_FILE = '/home/anqian/Desktop/my_lab/workloads/lstm/gnn_lat_pred.json'
 TRACE_FILE   = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/trace_2.csv'
 with open(FEATURES_FILE) as f: gnn_features = json.load(f)
+with open(GNN_LAT_FILE) as f: gnn_lat_pred = json.load(f)
 
 trace = []
 with open(TRACE_FILE) as f:
@@ -42,7 +44,7 @@ def build_seq(data_list, features):
     X, y_ratio, serial_lats = [], [], []
     for qi,si,ei,rti,sti,ov in data_list:
         if qi not in features: continue
-        serial_lat = max(features[qi]['serial_labels'].get('latency_s', 1), 0.5)
+        serial_lat = max(float(gnn_lat_pred.get(qi, 10)), 0.5)  # GNN predicted
         sl = math.log(1 + serial_lat)
         qv = features[qi]['plan_emb'] + list(features[qi]['gpu_resources'].values()) + [sl]
         t_res = list(features[qi]['gpu_resources'].values())
