@@ -1,11 +1,12 @@
 """
-Bi-LSTM concurrent runtime prediction with ratio target (best method).
+Bi-LSTM concurrent runtime prediction with dual-head prediction.
 
-Key improvement: predict slowdown_ratio = conc_runtime / serial_latency
-instead of absolute runtime. This normalizes the target space and
-significantly improves Q-error across all percentiles.
+Two heads:
+  - ratio_head: predicts slowdown_ratio (good for small slowdowns)
+  - delta_head: predicts absolute delta_ms (good for large slowdowns)
+  - gate: learns to blend between them based on query features
 
-Architecture: 2-layer Bi-LSTM (hidden=256) → MLP → log(1+ratio) prediction.
+Architecture: 2-layer Bi-LSTM (hidden=256) → ratio_head + delta_head + gate
 """
 
 import os, json, csv, math, numpy as np, torch, torch.nn as nn
@@ -35,15 +36,18 @@ class ConcurrentDataset(Dataset):
             self.serial_lat = np.array(data['serial_lat'], dtype=np.float32)
 
     def __len__(self): return len(self.X)
-    def __getitem__(self, idx): return self.X[idx], self.lengths[idx], self.y[idx]
+    def __getitem__(self, idx):
+        sl = self.serial_lat[idx] if hasattr(self, 'serial_lat') else 1.0
+        return self.X[idx], self.lengths[idx], self.y[idx], torch.tensor(sl, dtype=torch.float32)
 
 
 def collate_fn(batch):
-    X, lengths, y = zip(*batch)
+    X, lengths, y, slat = zip(*batch)
     sort_idx = torch.argsort(torch.stack(lengths), descending=True)
     return (torch.stack([X[i] for i in sort_idx]),
             torch.stack([lengths[i] for i in sort_idx]),
-            torch.stack([y[i] for i in sort_idx]))
+            torch.stack([y[i] for i in sort_idx]),
+            torch.stack([slat[i] for i in sort_idx]))
 
 
 class ConcurrentBiLSTM(nn.Module):
@@ -54,9 +58,19 @@ class ConcurrentBiLSTM(nn.Module):
         self.bilstm = nn.LSTM(hidden_dim, hidden_dim // 2, num_layers=num_layers,
                               batch_first=True, bidirectional=True,
                               dropout=dropout if num_layers > 1 else 0)
-        self.predictor = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim // 2), nn.ReLU(),
-            nn.Dropout(dropout), nn.Linear(hidden_dim // 2, 1))
+        shared_dim = hidden_dim // 2
+        # Ratio head: good for small slowdowns
+        self.ratio_head = nn.Sequential(
+            nn.Linear(hidden_dim, shared_dim), nn.ReLU(),
+            nn.Dropout(dropout), nn.Linear(shared_dim, 1))
+        # Delta head: good for large slowdowns (predicts absolute ms increment)
+        self.delta_head = nn.Sequential(
+            nn.Linear(hidden_dim, shared_dim), nn.ReLU(),
+            nn.Dropout(dropout), nn.Linear(shared_dim, 1))
+        # Gate: blend ratio vs delta prediction per sample
+        self.gate = nn.Sequential(
+            nn.Linear(hidden_dim, shared_dim), nn.ReLU(),
+            nn.Dropout(dropout), nn.Linear(shared_dim, 1), nn.Sigmoid())
 
     def forward(self, X, lengths):
         x = self.embedding(X)
@@ -64,23 +78,40 @@ class ConcurrentBiLSTM(nn.Module):
             x, lengths.cpu(), batch_first=True, enforce_sorted=True)
         _, (hn, _) = self.bilstm(packed)
         final = torch.cat([hn[-2], hn[-1]], dim=-1)
-        return self.predictor(final).squeeze(-1)
+        ratio_pred = self.ratio_head(final).squeeze(-1)
+        delta_pred = self.delta_head(final).squeeze(-1)
+        gate_val = self.gate(final).squeeze(-1)
+        return ratio_pred, delta_pred, gate_val
 
 
 def evaluate(model, loader, dataset, device='cpu'):
     model.eval()
-    all_pred, all_label = [], []
+    all_p_ratio, all_p_delta, all_gate, all_label, all_slats = [], [], [], [], []
     with torch.no_grad():
-        for X, lengths, y in loader:
-            X, y = X.to(device), y.to(device)
-            all_pred.append(model(X, lengths).cpu().numpy())
+        for X, lengths, y, slat in loader:
+            X, y, slat = X.to(device), y.to(device), slat.to(device)
+            r_pred, d_pred, g_val = model(X, lengths)
+            all_p_ratio.append(r_pred.cpu().numpy())
+            all_p_delta.append(d_pred.cpu().numpy())
+            all_gate.append(g_val.cpu().numpy())
             all_label.append(y.cpu().numpy())
-    p = np.concatenate(all_pred); t = np.concatenate(all_label)
-    # Denorm using stored stats: z-scored log-ratio → ratio
-    p_ratio = np.maximum(np.exp(p * dataset.y_std + dataset.y_mean) - 1, 0.01)
-    t_ratio = np.maximum(np.exp(t * dataset.y_std + dataset.y_mean) - 1, 0.01)
-    qe = np.maximum(p_ratio / t_ratio, t_ratio / p_ratio)
-    return p, t, qe
+            all_slats.append(slat.cpu().numpy())
+    pr = np.concatenate(all_p_ratio); pd = np.concatenate(all_p_delta)
+    gv = np.concatenate(all_gate); t = np.concatenate(all_label)
+    sl = np.concatenate(all_slats)
+
+    # Convert predictions to raw ratio
+    pr_raw = np.maximum(np.exp(pr * dataset.y_std + dataset.y_mean) - 1, 0.01)
+    t_raw  = np.maximum(np.exp(t * dataset.y_std + dataset.y_mean) - 1, 0.01)
+
+    # Delta head: z-scored log(1+delta_ms) → delta_ms → ratio
+    pd_raw = np.maximum(np.exp(pd * dataset.delta_mean + dataset.delta_std) - 1, 0.01)
+    pd_ratio = pd_raw / np.maximum(sl, 0.5) + 1.0
+
+    # Blend
+    p_ratio = gv.squeeze() * pr_raw + (1 - gv.squeeze()) * pd_ratio
+    qe = np.maximum(p_ratio / np.maximum(t_raw, 0.01), np.maximum(t_raw, 0.01) / np.maximum(p_ratio, 0.01))
+    return p_ratio, t_raw, qe
 
 
 def main(trace_file, epochs=200, lr=1e-3, seed=42, prefix=''):
@@ -93,6 +124,17 @@ def main(trace_file, epochs=200, lr=1e-3, seed=42, prefix=''):
 
     train_loader = DataLoader(train_ds, batch_size=64, shuffle=True, collate_fn=collate_fn)
     test_loader  = DataLoader(test_ds, batch_size=256, shuffle=False, collate_fn=collate_fn)
+
+    # Compute delta label stats
+    sample_ratios = np.exp(train_ds.y.numpy() * train_ds.y_std + train_ds.y_mean) - 1
+    sample_slats = train_ds.serial_lat
+    sample_deltas = np.maximum((sample_ratios - 1.0) * sample_slats, 0.001)
+    log_deltas = np.log(1.0 + sample_deltas)
+    train_ds.delta_mean = float(log_deltas.mean())
+    train_ds.delta_std  = float(log_deltas.std()) + 1e-8
+    test_ds.delta_mean  = train_ds.delta_mean
+    test_ds.delta_std   = train_ds.delta_std
+    print(f"Delta stats: mean={train_ds.delta_mean:.3f} std={train_ds.delta_std:.3f}")
 
     model = ConcurrentBiLSTM(input_dim=train_ds.X.shape[2])
     print(f"Params: {sum(p.numel() for p in model.parameters()):,}")
@@ -107,10 +149,25 @@ def main(trace_file, epochs=200, lr=1e-3, seed=42, prefix=''):
 
     for epoch in range(1, epochs + 1):
         model.train()
-        for X, lengths, y in train_loader:
-            X, y = X.to(device), y.to(device)
+        for X, lengths, y, slat in train_loader:
+            X, y, slat = X.to(device), y.to(device), slat.to(device)
             opt.zero_grad()
-            loss = nn.functional.huber_loss(model(X, lengths), y)
+            pred_ratio, pred_delta, gate_val = model(X, lengths)
+
+            # Ratio label
+            true_ratio_raw = torch.exp(y * train_ds.y_std + train_ds.y_mean) - 1
+            # Delta label
+            true_delta_raw = torch.clamp((true_ratio_raw - 1.0) * slat, min=0.001)
+            true_delta_z = (torch.log(1.0 + true_delta_raw) - train_ds.delta_mean) / train_ds.delta_std
+
+            loss_ratio = nn.functional.huber_loss(pred_ratio, y)
+            loss_delta = nn.functional.huber_loss(pred_delta, true_delta_z)
+
+            # Gate: soft supervision — trust ratio for small slowdowns, delta for large
+            gate_target = torch.sigmoid((2.0 - true_ratio_raw) / 0.8)
+            loss_gate = nn.functional.binary_cross_entropy(gate_val, gate_target)
+
+            loss = loss_ratio + loss_delta + 0.05 * loss_gate
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
             opt.step()
@@ -151,17 +208,27 @@ def main(trace_file, epochs=200, lr=1e-3, seed=42, prefix=''):
 
     # Get predictions and convert to absolute runtime
     model.eval()
-    all_pred_ratio, all_true_ratio = [], []
+    all_pr, all_gt = [], []
+    all_sl = []
     with torch.no_grad():
-        for X, lengths, y in test_loader:
-            X, y = X.to(device), y.to(device)
-            all_pred_ratio.append(model(X, lengths).cpu().numpy())
-            all_true_ratio.append(y.cpu().numpy())
-    p_ratio = np.concatenate(all_pred_ratio); t_ratio = np.concatenate(all_true_ratio)
-    pr = np.maximum(np.exp(p_ratio * test_ds.y_std + test_ds.y_mean) - 1, 0.01)
-    tr = np.maximum(np.exp(t_ratio * test_ds.y_std + test_ds.y_mean) - 1, 0.01)
-    sla = np.array(serial_lats[:len(pr)])
-    p_abs = pr * sla; t_abs = tr * sla
+        for X, lengths, y, slat in test_loader:
+            X, y, slat = X.to(device), y.to(device), slat.to(device)
+            r_pred, d_pred, g_val = model(X, lengths)
+            # Denorm ratio
+            pr_raw = torch.clamp(torch.exp(r_pred * test_ds.y_std + test_ds.y_mean) - 1, min=0.01)
+            # Denorm delta → ratio
+            pd_raw = torch.clamp(torch.exp(d_pred * test_ds.delta_mean + test_ds.delta_std) - 1, min=0.01)
+            pd_ratio = pd_raw / torch.clamp(slat, min=0.5) + 1.0
+            # Blend
+            p_blend = g_val.squeeze() * pr_raw + (1 - g_val.squeeze()) * pd_ratio
+            # True ratio
+            t_raw = torch.clamp(torch.exp(y * test_ds.y_std + test_ds.y_mean) - 1, min=0.01)
+            all_pr.append(p_blend.cpu().numpy())
+            all_gt.append(t_raw.cpu().numpy())
+            all_sl.append(slat.cpu().numpy())
+    pr = np.concatenate(all_pr); tr = np.concatenate(all_gt)
+    sla_arr = np.concatenate(all_sl)
+    p_abs = pr * sla_arr; t_abs = tr * sla_arr
     r2 = 1 - np.sum((np.log(t_abs+1) - np.log(p_abs+1))**2) / max(np.sum((np.log(t_abs+1) - np.mean(np.log(t_abs+1)))**2), 1e-8)
 
     print(f"\n=== Results ({nq} test queries) ===")
