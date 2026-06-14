@@ -9,6 +9,7 @@ FEATURES_FILE = '/home/anqian/Desktop/my_lab/workloads/lstm/gnn_features.json'
 OUT_DIR = '/home/anqian/Desktop/my_lab/workloads/lstm'
 TRACES = [
     '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/trace_2.csv',
+    '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/trace_3.csv',
     '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/trace_4.csv',
 ]
 
