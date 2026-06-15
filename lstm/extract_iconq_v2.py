@@ -8,15 +8,13 @@ Prediction target: log(1 + concurrent_runtime_seconds)
 import os, re, json, csv, math, numpy as np, sys
 
 OP_TYPES = [
-    'TableFullScan', 'TableRangeScan', 'IndexRangeScan', 'IndexFullScan',
-    'TableRowIDScan', 'IndexLookUp', 'IndexReader',
-    'HashJoin', 'MergeJoin', 'IndexJoin', 'IndexHashJoin',
-    'HashAgg', 'StreamAgg',
-    'Sort', 'TopN', 'Window',
+    'TableFullScan', 'TableRangeScan', 'IndexRangeScan', 'TableRowIDScan',
+    'IndexLookUp', 'IndexReader',
+    'MergeJoin', 'IndexJoin', 'IndexHashJoin',
+    'StreamAgg',
+    'Window',
     'ExchangeSender', 'ExchangeReceiver',
-    'Projection', 'Selection', 'Limit',
-    'UnionAll', 'Distinct',
-    'Apply', 'MaxOneRow',
+    'Projection', 'Selection',
 ]
 
 TPCH_TABLES = ['lineitem', 'orders', 'partsupp', 'part', 'supplier',
