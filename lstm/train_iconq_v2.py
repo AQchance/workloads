@@ -39,24 +39,37 @@ def collate_fn(batch):
 
 
 class AbsRuntimeBiLSTM(nn.Module):
-    def __init__(self, input_dim, hidden_dim=256, num_layers=2, dropout=0.2):
+    """ICONQ repo exact: BiLSTM from seq_to_seq.py (Xavier, BN, no activation in embedding/output)."""
+    def __init__(self, input_dim, embedding_dim=128, hidden_size=256, num_layers=2, dropout=0.1):
         super().__init__()
+        self.bn = nn.BatchNorm1d(input_dim)
         self.embedding = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim), nn.ReLU(), nn.Dropout(dropout))
-        self.bilstm = nn.LSTM(hidden_dim, hidden_dim // 2, num_layers=num_layers,
-                              batch_first=True, bidirectional=True,
-                              dropout=dropout if num_layers > 1 else 0)
-        self.predictor = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim // 2), nn.ReLU(),
-            nn.Dropout(dropout), nn.Linear(hidden_dim // 2, 1))
+            nn.Linear(input_dim, embedding_dim),
+            nn.Linear(embedding_dim, embedding_dim),
+        )
+        self.bilstm = nn.LSTM(embedding_dim, hidden_size, num_layers, dropout=dropout,
+                              batch_first=True, bidirectional=True)
+        self.output_layer = nn.Sequential(
+            nn.Linear(hidden_size * 2, hidden_size // 2),
+            nn.Linear(hidden_size // 2, 1),
+        )
+        for m in [self.embedding, self.bilstm, self.output_layer]:
+            for n, p in m.named_parameters():
+                if 'weight' in n: nn.init.xavier_uniform_(p.data)
+                elif 'bias' in n: nn.init.constant_(p.data, 0.0)
 
     def forward(self, X, lengths):
+        if X.shape[1] > 1:
+            X = torch.transpose(X, 1, 2)
+            X = self.bn(X)
+            X = torch.transpose(X, 1, 2)
         x = self.embedding(X)
         packed = nn.utils.rnn.pack_padded_sequence(
-            x, lengths.cpu(), batch_first=True, enforce_sorted=True)
-        _, (hn, _) = self.bilstm(packed)
-        final = torch.cat([hn[-2], hn[-1]], dim=-1)
-        return self.predictor(final).squeeze(-1)
+            x, lengths.cpu(), batch_first=True, enforce_sorted=False)
+        output, _ = self.bilstm(packed)
+        output, _ = nn.utils.rnn.pad_packed_sequence(output, batch_first=True)
+        output = output[torch.arange(len(lengths)), lengths - 1]
+        return self.output_layer(output).squeeze(-1)
 
 
 def evaluate(model, loader, dataset, device='cpu'):
@@ -83,7 +96,7 @@ def main(trace_file, epochs=200, lr=1e-3, seed=42, prefix=''):
     test_ds  = ConcurrentDataset(test_npz)
     print(f"Train: {len(train_ds)} | Test: {len(test_ds)} | Dim: {train_ds.X.shape[2]}")
 
-    train_loader = DataLoader(train_ds, batch_size=64, shuffle=True, collate_fn=collate_fn)
+    train_loader = DataLoader(train_ds, batch_size=128, shuffle=True, collate_fn=collate_fn)
     test_loader  = DataLoader(test_ds, batch_size=256, shuffle=False, collate_fn=collate_fn)
 
     model = AbsRuntimeBiLSTM(input_dim=train_ds.X.shape[2])
@@ -93,7 +106,7 @@ def main(trace_file, epochs=200, lr=1e-3, seed=42, prefix=''):
     print(f"Device: {device}")
     model = model.to(device)
 
-    opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=2e-5)
+    opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=2e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs, eta_min=1e-6)
     best_val, best_state = float('inf'), None
 
