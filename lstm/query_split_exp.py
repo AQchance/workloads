@@ -417,10 +417,13 @@ def print_results(name, qe, n, n_params, label_type):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--seed', type=int, default=42, help='Model training seed')
+    parser.add_argument('--split-seed', type=int, default=None, help='Query split seed (default: same as --seed)')
     parser.add_argument('--epochs', type=int, default=250)
     parser.add_argument('--split-ratio', type=float, default=0.7)
     args = parser.parse_args()
+    if args.split_seed is None:
+        args.split_seed = args.seed
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Device: {device}')
@@ -436,7 +439,7 @@ def main():
 
     # ─── Query-level split ───
     unique_qids = sorted(set(q for _, _, q, _, _ in timeline if q in gnf))
-    np.random.seed(args.seed)
+    np.random.seed(args.split_seed)
     np.random.shuffle(unique_qids)
     n_train_q = int(len(unique_qids) * args.split_ratio)
     train_qids = set(unique_qids[:n_train_q])
