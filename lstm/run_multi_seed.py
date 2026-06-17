@@ -67,6 +67,6 @@ if __name__ == '__main__':
     avg_ic50 = np.mean(ic_p50s); avg_gn50 = np.mean(gn_p50s)
     avg_ic90 = np.mean(ic_p90s); avg_gn90 = np.mean(gn_p90s)
     avg_ic95 = np.mean(ic_p95s); avg_gn95 = np.mean(gn_p95s)
-    print(f'{"Mean":>6}  {avg_ic50:>8. 2f}x  {avg_gn50:>8.2f}x  {(avg_ic50-avg_gn50)/avg_ic50*100:>+5.1f}%  '
+    print(f'{"Mean":>6}  {avg_ic50:>8.2f}x  {avg_gn50:>8.2f}x  {(avg_ic50-avg_gn50)/avg_ic50*100:>+5.1f}%  '
           f'{avg_ic90:>10.2f}x  {avg_gn90:>8.2f}x  {(avg_ic90-avg_gn90)/avg_ic90*100:>+5.1f}%  '
           f'{avg_ic95:>10.2f}x  {avg_gn95:>8.2f}x  {(avg_ic95-avg_gn95)/avg_ic95*100:>+5.1f}%')

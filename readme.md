@@ -1144,3 +1144,16 @@ GNN用一半的参数（1.33M vs2.46M），在全部分位点上都优于I 文�
   cd /home/anqian/Desktop/my_lab/workloads
   source ../.venv/bin/activate
   python gnn/train_cgroup.py --epochs 400 --seed 42
+
+- 不同种子的测试命令
+  # 单种子（测试用）
+  python lstm/query_split_exp.py --seed 42 --epochs 250
+
+  # 多种子对比（正式实验）
+  python lstm/run_multi_seed.py 42 123 456 78 234 567 789 890 1024
+
+  已跑过的种子会自动跳过（从 results_s{seed}.json 检测），增量跑新的即可。结果保存在
+  lstm/query_split_results/ 下，每个种子产出：
+  - results_s{seed}.json — 全分位 Q-error
+  - iconq_baseline_s{seed}.pt — ICONQ 模型
+  - gnn_resourcefull_s{seed}.pt — GNN 模型
