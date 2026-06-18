@@ -181,25 +181,31 @@ class AbsDataset(torch.utils.data.Dataset):
         return self.X[i], self.lengths[i], self.y[i]
 
 
-def make_dense_and_normalize(X_seq, y_raw, ml, label_space='abs'):
+def pad_and_normalize(X_seq, y_raw, ml, Xm=None, Xs=None, ym=None, ys=None):
+    """Pad + normalize. If stats not given, compute from data (for training set)."""
     d = len(X_seq[0][0])
     Xa = np.zeros((len(X_seq), ml, d), dtype=np.float32)
     for i, s in enumerate(X_seq):
         Xa[i, :len(s)] = s
-    mask = np.zeros_like(Xa)
-    for i, s in enumerate(X_seq):
-        mask[i, :len(s)] = 1.0
-    Xm = (Xa * mask).sum(axis=(0, 1)) / max(mask.sum(), 1)
-    Xs = np.sqrt(((Xa - Xm) ** 2 * mask).sum(axis=(0, 1)) / max(mask.sum(), 1)) + 1e-8
-    yl = np.log(1 + np.array(y_raw, dtype=np.float32))
-    ym, ys = float(yl.mean()), float(yl.std()) + 1e-8
     lens = np.array([len(s) for s in X_seq], dtype=np.int32)
-    X_norm = (Xa - Xm) / Xs
-    y_norm = (yl - ym) / ys
-    if label_space == 'abs':
-        return AbsDataset(X_norm, lens, y_norm, ym, ys)
+
+    if Xm is None:
+        mask = np.zeros_like(Xa)
+        for i, s in enumerate(X_seq):
+            mask[i, :len(s)] = 1.0
+        Xm = (Xa * mask).sum(axis=(0, 1)) / max(mask.sum(), 1)
+        Xs = np.sqrt(((Xa - Xm) ** 2 * mask).sum(axis=(0, 1)) / max(mask.sum(), 1)) + 1e-8
+
+    if ym is None:
+        yl = np.log(1 + np.array(y_raw, dtype=np.float32))
+        ym, ys = float(yl.mean()), float(yl.std()) + 1e-8
+        y_norm = (yl - ym) / ys
     else:
-        return RatioDataset(X_norm, lens, y_norm), ym, ys
+        yl = np.log(1 + np.array(y_raw, dtype=np.float32))
+        y_norm = (yl - ym) / ys
+
+    X_norm = (Xa - Xm) / Xs
+    return X_norm, lens, y_norm, Xm, Xs, ym, ys
 
 
 def collate_fn(batch):
@@ -277,17 +283,18 @@ class ResourceFullBiLSTM(nn.Module):
 
 # ═══════════════════════ Training ═══════════════════════
 
-def train_iconq(train_ds, test_ds, seed, epochs, device):
+def train_iconq(train_ds, val_ds, test_ds, seed, epochs, device):
     torch.manual_seed(seed)
     np.random.seed(seed)
     train_loader = DataLoader(train_ds, batch_size=128, shuffle=True, collate_fn=collate_fn)
+    val_loader = DataLoader(val_ds, batch_size=256, shuffle=False, collate_fn=collate_fn)
     test_loader = DataLoader(test_ds, batch_size=256, shuffle=False, collate_fn=collate_fn)
 
     model = ICONQBiLSTM(input_dim=train_ds.X.shape[2]).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=2e-5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs, eta_min=1e-6)
     best_val, best_state = float('inf'), None
-    y_std, y_mean = test_ds.y_std, test_ds.y_mean
+    y_std, y_mean = train_ds.y_std, train_ds.y_mean
 
     for epoch in range(1, epochs + 1):
         model.train()
@@ -304,12 +311,11 @@ def train_iconq(train_ds, test_ds, seed, epochs, device):
             model.eval()
             ap, at = [], []
             with torch.no_grad():
-                for X, lengths, y in test_loader:
+                for X, lengths, y in val_loader:
                     X = X.to(device)
                     ap.append(model(X, lengths).cpu().numpy())
                     at.append(y.numpy())
-            p_z = np.concatenate(ap)
-            t_z = np.concatenate(at)
+            p_z = np.concatenate(ap); t_z = np.concatenate(at)
             p_sec = np.maximum(np.exp(p_z * y_std + y_mean) - 1, 0.01)
             t_sec = np.maximum(np.exp(t_z * y_std + y_mean) - 1, 0.01)
             med = np.median(np.maximum(p_sec / t_sec, t_sec / p_sec))
@@ -317,7 +323,7 @@ def train_iconq(train_ds, test_ds, seed, epochs, device):
                 best_val = med
                 best_state = {k: v.clone() for k, v in model.state_dict().items()}
             if epoch % 100 == 0 or epoch == 1:
-                print(f'  ICONQ E{epoch:3d} best={best_val:.2f}x cur={med:.2f}x')
+                print(f'  ICONQ E{epoch:3d} val={med:.2f}x best={best_val:.2f}x')
 
     model.load_state_dict(best_state)
     model.eval()
@@ -327,8 +333,7 @@ def train_iconq(train_ds, test_ds, seed, epochs, device):
             X = X.to(device)
             ap.append(model(X, lengths).cpu().numpy())
             at.append(y.numpy())
-    p_z = np.concatenate(ap)
-    t_z = np.concatenate(at)
+    p_z = np.concatenate(ap); t_z = np.concatenate(at)
     p_sec = np.maximum(np.exp(p_z * y_std + y_mean) - 1, 0.01)
     t_sec = np.maximum(np.exp(t_z * y_std + y_mean) - 1, 0.01)
     qe = np.maximum(p_sec / t_sec, t_sec / p_sec)
@@ -336,10 +341,11 @@ def train_iconq(train_ds, test_ds, seed, epochs, device):
     return model, best_state, qe, p_sec, t_sec, n_params
 
 
-def train_gnn(train_ds, test_ds, ym, ys, seed, epochs, device):
+def train_gnn(train_ds, val_ds, test_ds, ym, ys, seed, epochs, device):
     torch.manual_seed(seed)
     np.random.seed(seed)
     train_loader = DataLoader(train_ds, batch_size=128, shuffle=True, collate_fn=collate_fn)
+    val_loader = DataLoader(val_ds, batch_size=256, shuffle=False, collate_fn=collate_fn)
     test_loader = DataLoader(test_ds, batch_size=256, shuffle=False, collate_fn=collate_fn)
 
     model = ResourceFullBiLSTM().to(device)
@@ -362,12 +368,11 @@ def train_gnn(train_ds, test_ds, ym, ys, seed, epochs, device):
             model.eval()
             ap, at = [], []
             with torch.no_grad():
-                for X, lengths, y in test_loader:
+                for X, lengths, y in val_loader:
                     X = X.to(device)
                     ap.append(model(X, lengths).cpu().numpy())
                     at.append(y.numpy())
-            p_z = np.concatenate(ap)
-            t_z = np.concatenate(at)
+            p_z = np.concatenate(ap); t_z = np.concatenate(at)
             p_raw = np.maximum(np.exp(p_z * ys + ym) - 1, 0.01)
             t_raw = np.maximum(np.exp(t_z * ys + ym) - 1, 0.01)
             med = np.median(np.maximum(p_raw / t_raw, t_raw / p_raw))
@@ -375,7 +380,7 @@ def train_gnn(train_ds, test_ds, ym, ys, seed, epochs, device):
                 best_val = med
                 best_state = {k: v.clone() for k, v in model.state_dict().items()}
             if epoch % 100 == 0 or epoch == 1:
-                print(f'  GNN   E{epoch:3d} best={best_val:.2f}x cur={med:.2f}x')
+                print(f'  GNN   E{epoch:3d} val={med:.2f}x best={best_val:.2f}x')
 
     model.load_state_dict(best_state)
     model.eval()
@@ -385,8 +390,7 @@ def train_gnn(train_ds, test_ds, ym, ys, seed, epochs, device):
             X = X.to(device)
             ap.append(model(X, lengths).cpu().numpy())
             at.append(y.numpy())
-    p_z = np.concatenate(ap)
-    t_z = np.concatenate(at)
+    p_z = np.concatenate(ap); t_z = np.concatenate(at)
     p_raw = np.maximum(np.exp(p_z * ys + ym) - 1, 0.01)
     t_raw = np.maximum(np.exp(t_z * ys + ym) - 1, 0.01)
     qe = np.maximum(p_raw / t_raw, t_raw / p_raw)
@@ -420,14 +424,15 @@ def main():
     parser.add_argument('--seed', type=int, default=42, help='Model training seed')
     parser.add_argument('--split-seed', type=int, default=None, help='Query split seed (default: same as --seed)')
     parser.add_argument('--epochs', type=int, default=250)
-    parser.add_argument('--split-ratio', type=float, default=0.7)
+    parser.add_argument('--train-ratio', type=float, default=0.8, help='Training set ratio')
+    parser.add_argument('--val-ratio', type=float, default=0.1, help='Validation set ratio (test = 1 - train - val)')
     args = parser.parse_args()
     if args.split_seed is None:
         args.split_seed = args.seed
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Device: {device}')
-    print(f'Seed: {args.seed}, Epochs: {args.epochs}, Split: {args.split_ratio}')
+    print(f'Seed: {args.seed}, Epochs: {args.epochs}, Split: {args.train_ratio}/{args.val_ratio}/{1-args.train_ratio-args.val_ratio:.1f}')
 
     # ─── Load data ───
     print(f'\n{"="*60}\nLoading data...')
@@ -437,19 +442,25 @@ def main():
     timeline = load_timeline()
     print(f'  Timeline: {len(timeline)} events')
 
-    # ─── Query-level split ───
+    # ─── Query-level split (3-way) ───
     unique_qids = sorted(set(q for _, _, q, _, _ in timeline if q in gnf))
     np.random.seed(args.split_seed)
     np.random.shuffle(unique_qids)
-    n_train_q = int(len(unique_qids) * args.split_ratio)
-    train_qids = set(unique_qids[:n_train_q])
-    test_qids = set(unique_qids[n_train_q:])
-    print(f'  Query split: {len(train_qids)} train / {len(test_qids)} test')
+    n_train = int(len(unique_qids) * args.train_ratio)
+    n_val = int(len(unique_qids) * args.val_ratio)
+    if n_train == 0: n_train = 1
+    if n_val == 0: n_val = 1
+    train_qids = set(unique_qids[:n_train])
+    val_qids = set(unique_qids[n_train:n_train + n_val])
+    test_qids = set(unique_qids[n_train + n_val:])
+    if not test_qids: test_qids = {unique_qids[-1]}; val_qids -= test_qids
+    print(f'  Query split: {len(train_qids)} train / {len(val_qids)} val / {len(test_qids)} test')
 
     ci = build_concurrent_sets(timeline)
     train_d = [c for c in ci if c[0] in train_qids]
+    val_d = [c for c in ci if c[0] in val_qids]
     test_d = [c for c in ci if c[0] in test_qids]
-    print(f'  Events: {len(train_d)} train / {len(test_d)} test')
+    print(f'  Events: {len(train_d)} train / {len(val_d)} val / {len(test_d)} test')
 
     qid_info = {}
     for s, e, q, _, _ in timeline:
@@ -460,45 +471,55 @@ def main():
     print(f'  ICONQ features: {len(iconq_feats)} queries')
 
     X_tr_ic, y_tr_ic = build_iconq_sequences(train_d, iconq_feats, qid_info)
+    X_va_ic, y_va_ic = build_iconq_sequences(val_d, iconq_feats, qid_info)
     X_te_ic, y_te_ic = build_iconq_sequences(test_d, iconq_feats, qid_info)
 
     X_tr_gnn, y_tr_gnn = build_gnn_sequences(train_d, gnf, qid_info)
+    X_va_gnn, y_va_gnn = build_gnn_sequences(val_d, gnf, qid_info)
     X_te_gnn, y_te_gnn = build_gnn_sequences(test_d, gnf, qid_info)
 
-    ml_ic = max(max(len(s) for s in X_tr_ic), max(len(s) for s in X_te_ic))
-    ml_gnn = max(max(len(s) for s in X_tr_gnn), max(len(s) for s in X_te_gnn))
+    ml_ic = max(max(len(s) for s in X_tr_ic), max(len(s) for s in X_va_ic), max(len(s) for s in X_te_ic))
+    ml_gnn = max(max(len(s) for s in X_tr_gnn), max(len(s) for s in X_va_gnn), max(len(s) for s in X_te_gnn))
 
-    print(f'\n  ICONQ: {len(X_tr_ic)} train / {len(X_te_ic)} test, '
+    print(f'\n  ICONQ: {len(X_tr_ic)} train / {len(X_va_ic)} val / {len(X_te_ic)} test, '
           f'dim={len(X_tr_ic[0][0])}, max_len={ml_ic}')
-    print(f'  GNN:   {len(X_tr_gnn)} train / {len(X_te_gnn)} test, '
+    print(f'  GNN:   {len(X_tr_gnn)} train / {len(X_va_gnn)} val / {len(X_te_gnn)} test, '
           f'dim={len(X_tr_gnn[0][0])}, max_len={ml_gnn}')
 
-    # ─── Normalize ───
-    train_ds_ic = make_dense_and_normalize(X_tr_ic, y_tr_ic, ml_ic, 'abs')
-    test_ds_ic = make_dense_and_normalize(X_te_ic, y_te_ic, ml_ic, 'abs')
+    # ─── Normalize: compute stats from TRAIN only, apply to val and test ───
+    X_tr_ic_n, l_tr_ic, y_tr_ic_n, Xm_ic, Xs_ic, ym_ic, ys_ic = pad_and_normalize(X_tr_ic, y_tr_ic, ml_ic)
+    X_va_ic_n, l_va_ic, y_va_ic_n, _, _, _, _ = pad_and_normalize(X_va_ic, y_va_ic, ml_ic, Xm_ic, Xs_ic, ym_ic, ys_ic)
+    X_te_ic_n, l_te_ic, y_te_ic_n, _, _, _, _ = pad_and_normalize(X_te_ic, y_te_ic, ml_ic, Xm_ic, Xs_ic, ym_ic, ys_ic)
+    train_ds_ic = AbsDataset(X_tr_ic_n, l_tr_ic, y_tr_ic_n, ym_ic, ys_ic)
+    val_ds_ic = AbsDataset(X_va_ic_n, l_va_ic, y_va_ic_n, ym_ic, ys_ic)
+    test_ds_ic = AbsDataset(X_te_ic_n, l_te_ic, y_te_ic_n, ym_ic, ys_ic)
 
-    train_ds_gnn, ym_g, ys_g = make_dense_and_normalize(X_tr_gnn, y_tr_gnn, ml_gnn, 'ratio')
-    test_ds_gnn, _, _ = make_dense_and_normalize(X_te_gnn, y_te_gnn, ml_gnn, 'ratio')
+    X_tr_gnn_n, l_tr_gnn, y_tr_gnn_n, Xm_g, Xs_g, ym_g, ys_g = pad_and_normalize(X_tr_gnn, y_tr_gnn, ml_gnn)
+    X_va_gnn_n, l_va_gnn, y_va_gnn_n, _, _, _, _ = pad_and_normalize(X_va_gnn, y_va_gnn, ml_gnn, Xm_g, Xs_g, ym_g, ys_g)
+    X_te_gnn_n, l_te_gnn, y_te_gnn_n, _, _, _, _ = pad_and_normalize(X_te_gnn, y_te_gnn, ml_gnn, Xm_g, Xs_g, ym_g, ys_g)
+    train_ds_gnn = RatioDataset(X_tr_gnn_n, l_tr_gnn, y_tr_gnn_n)
+    val_ds_gnn = RatioDataset(X_va_gnn_n, l_va_gnn, y_va_gnn_n)
+    test_ds_gnn = RatioDataset(X_te_gnn_n, l_te_gnn, y_te_gnn_n)
 
-    # ─── Train ICONQ Baseline ───
+    # ─── Train ICONQ Baseline (val for checkpoint, test for final eval) ───
     print(f'\n{"="*60}\nTraining ICONQ Baseline (seed={args.seed})...')
     model_ic, state_ic, qe_ic, p_ic, t_ic, np_ic = train_iconq(
-        train_ds_ic, test_ds_ic, args.seed, args.epochs, device)
+        train_ds_ic, val_ds_ic, test_ds_ic, args.seed, args.epochs, device)
     n_ic = len(qe_ic)
     qe_ic_sorted = np.sort(qe_ic)
     print_results('ICONQ Baseline', qe_ic, n_ic, np_ic, 'absolute runtime')
 
-    # ─── Train GNN ResourceFull ───
+    # ─── Train GNN ResourceFull (val for checkpoint, test for final eval) ───
     print(f'\n{"="*60}\nTraining GNN ResourceFull (seed={args.seed})...')
     model_gnn, state_gnn, qe_gnn, p_gnn, t_gnn, np_gnn = train_gnn(
-        train_ds_gnn, test_ds_gnn, ym_g, ys_g, args.seed, args.epochs, device)
+        train_ds_gnn, val_ds_gnn, test_ds_gnn, ym_g, ys_g, args.seed, args.epochs, device)
     n_gnn = len(qe_gnn)
     qe_gnn_sorted = np.sort(qe_gnn)
     print_results('GNN ResourceFull', qe_gnn, n_gnn, np_gnn, 'slowdown ratio')
 
     # ─── Results ───
     print(f'\n{"="*60}')
-    print('QUERY-LEVEL SPLIT RESULTS (70/30 by query ID)')
+    print(f'QUERY-LEVEL SPLIT RESULTS ({args.train_ratio:.0%}/{args.val_ratio:.0%}/{(1-args.train_ratio-args.val_ratio):.0%} by query ID)')
     print(f'Seed={args.seed}, Epochs={args.epochs}')
     print(f'{"="*60}')
     print(f'{"Method":<24} {"P50":>6} {"P90":>6} {"P95":>6} {"Params":>10} {"Test":>8}')
@@ -537,15 +558,16 @@ def main():
 
     # ─── Save everything ───
     results = {
-        'config': {'seed': args.seed, 'epochs': args.epochs, 'split_ratio': args.split_ratio,
+        'config': {'seed': args.seed, 'epochs': args.epochs,
+                   'train_ratio': args.train_ratio, 'val_ratio': args.val_ratio,
                    'split_type': 'query_id', 'device': str(device)},
         'data': {
             'num_queries': len(unique_qids),
-            'train_queries': len(train_qids), 'test_queries': len(test_qids),
-            'train_events': len(train_d), 'test_events': len(test_d),
-            'iconq_train_seqs': len(X_tr_ic), 'iconq_test_seqs': len(X_te_ic),
+            'train_queries': len(train_qids), 'val_queries': len(val_qids), 'test_queries': len(test_qids),
+            'train_events': len(train_d), 'val_events': len(val_d), 'test_events': len(test_d),
+            'iconq_train_seqs': len(X_tr_ic), 'iconq_val_seqs': len(X_va_ic), 'iconq_test_seqs': len(X_te_ic),
             'iconq_dim': len(X_tr_ic[0][0]),
-            'gnn_train_seqs': len(X_tr_gnn), 'gnn_test_seqs': len(X_te_gnn),
+            'gnn_train_seqs': len(X_tr_gnn), 'gnn_val_seqs': len(X_va_gnn), 'gnn_test_seqs': len(X_te_gnn),
             'gnn_dim': len(X_tr_gnn[0][0]),
         },
         'iconq': {
