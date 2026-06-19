@@ -260,8 +260,8 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
 
     all_queries = sorted([
-        f.replace(".txt", "") for f in os.listdir(ANALYZE_DIR)
-        if f.endswith(".txt") and f.replace(".txt", "").isdigit()
+        f.replace(".sql", "") for f in os.listdir(SQL_DIR)
+        if f.endswith(".sql") and f.replace(".sql", "").isdigit()
     ], key=int)
 
     done = set()
