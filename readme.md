@@ -1157,3 +1157,7 @@ GNN用一半的参数（1.33M vs2.46M），在全部分位点上都优于I 文�
   - results_s{seed}.json — 全分位 Q-error
   - iconq_baseline_s{seed}.pt — ICONQ 模型
   - gnn_resourcefull_s{seed}.pt — GNN 模型
+
+  ## 2026-06-18
+
+  - 我们的bi-lstm的参数量明显是少于iconq的，这是因为我们的GNN已经做了对查询的资源画像的建模，因此Bi-LSTM就可以少一些参数，仅仅用于建模并发竞争。
