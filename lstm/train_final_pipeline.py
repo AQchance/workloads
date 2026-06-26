@@ -188,11 +188,8 @@ def pad_and_normalize(X_seq, y_raw, ml, Xm=None, Xs=None, ym=None, ys=None):
 
 # ═══════════════════════ Model ═══════════════════════
 
-class BiLSTM_RNA(nn.Module):
-    """BiLSTM with Resource Noise Augmentation.
-
-    During training, randomly perturbs resource features to improve
-    robustness against XGBoost prediction errors.
+class ConcurrentBiLSTM(nn.Module):
+    """BiLSTM for concurrent slowdown prediction.
 
     Input layout (17-dim per timestep):
       [0:5]   target resources (mem, disk, net, lat, cpures)
@@ -202,9 +199,8 @@ class BiLSTM_RNA(nn.Module):
       [12:17] resource_conflict (5-dim)
     """
     def __init__(self, input_dim=17, hidden_dim=256, num_layers=3,
-                 dropout=0.15, noise_level=0.05):
+                 dropout=0.15):
         super().__init__()
-        self.noise_level = noise_level
         self.emb = nn.Sequential(
             nn.Linear(input_dim, hidden_dim), nn.ReLU(), nn.Dropout(dropout))
         self.lstm = nn.LSTM(
@@ -215,10 +211,6 @@ class BiLSTM_RNA(nn.Module):
             nn.Dropout(dropout), nn.Linear(hidden_dim // 2, 1))
 
     def forward(self, X, lengths):
-        if self.training and self.noise_level > 0:
-            X = X.clone()
-            X[:, :, 0:5] += torch.randn_like(X[:, :, 0:5]) * self.noise_level
-            X[:, :, 5:10] += torch.randn_like(X[:, :, 5:10]) * self.noise_level
         x = self.emb(X)
         packed = nn.utils.rnn.pack_padded_sequence(
             x, lengths.cpu(), batch_first=True, enforce_sorted=True)
@@ -230,12 +222,12 @@ class BiLSTM_RNA(nn.Module):
 # ═══════════════════════ Training ═══════════════════════
 
 def train_bilstm(train_ds, val_ds, test_ds, ym, ys, input_dim,
-                 seed=42, epochs=400, lr=5e-4, noise_level=0.05):
+                 seed=42, epochs=400, lr=5e-4):
     torch.manual_seed(seed)
     np.random.seed(seed)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model = BiLSTM_RNA(input_dim=input_dim, noise_level=noise_level).to(device)
+    model = ConcurrentBiLSTM(input_dim=input_dim).to(device)
     n_params = sum(p.numel() for p in model.parameters())
 
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=2e-5)
@@ -297,13 +289,12 @@ def main():
     parser.add_argument('--seed', type=int, nargs='+', default=[42],
                         help='One or more seeds (e.g., --seed 42 123 456)')
     parser.add_argument('--epochs', type=int, default=400)
-    parser.add_argument('--noise', type=float, default=0.05)
     parser.add_argument('--n-folds', type=int, default=5)
     args = parser.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Device: {device}')
-    print(f'Seeds: {args.seed}, Epochs: {args.epochs}, Noise: {args.noise}, Folds: {args.n_folds}')
+    print(f'Seeds: {args.seed}, Epochs: {args.epochs}, Folds: {args.n_folds}')
 
     # ─── Load data ───
     print(f'\n{"=" * 60}\nLoading data...')
@@ -412,10 +403,10 @@ def main():
         test_ds = RatioDataset(Xn_te, l_te, yn_te)
 
         # Train BiLSTM + RNA
-        print(f'  Training BiLSTM + RNA (noise={args.noise})...')
+        print(f'  Training BiLSTM...')
         model, state, qe, n_params = train_bilstm(
             train_ds, val_ds, test_ds, ym, ys, d,
-            seed=seed, epochs=args.epochs, noise_level=args.noise)
+            seed=seed, epochs=args.epochs)
 
         n = len(qe)
         result = {
@@ -429,11 +420,11 @@ def main():
               f'P95={qe[int(n * 0.95)]:.3f}x  ({n_params:,} params)')
 
         # Save model
-        torch.save(state, os.path.join(OUT_DIR, f'bilstm_rna_s{seed}.pt'))
+        torch.save(state, os.path.join(OUT_DIR, f'bilstm_s{seed}.pt'))
 
     # ─── Summary ───
     print(f'\n{"=" * 60}')
-    print(f'FINAL RESULTS: 5-Fold CV XGBoost + 17-dim BiLSTM + RNA(noise={args.noise})')
+    print(f'FINAL RESULTS: 5-Fold CV XGBoost + 17-dim BiLSTM')
     print(f'{"=" * 60}')
     print(f'{"Seed":>6} {"P50":>7} {"P90":>7} {"P95":>7}')
     print('-' * 30)
@@ -456,7 +447,7 @@ def main():
     with open(results_path, 'w') as f:
         json.dump({
             'config': {
-                'epochs': args.epochs, 'noise_level': args.noise,
+                'epochs': args.epochs,
                 'n_folds': args.n_folds, 'split': '80/10/10',
                 'xgboost': 'n=500 depth=4 lr=0.1',
                 'bilstm': 'h=256 layers=3 dropout=0.15 lr=5e-4',
