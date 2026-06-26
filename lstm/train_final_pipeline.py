@@ -102,7 +102,15 @@ def resource_conflict(t, c):
 
 
 def build_sequences(data_list, cache, qid_info):
-    """Build 19-dim concurrent sequences from resource predictions."""
+    """Build 17-dim concurrent sequences from resource predictions.
+    Layout per timestep:
+      [0:5]   target resources (mem, disk, net, lat, cpures)
+      [5:10]  peer resources (mem, disk, net, lat, cpures)
+      [10]    time_delta
+      [11]    is_before
+      [12:17] resource_conflict (5-dim)
+    (No serial_lat — it's redundant with target_lat / peer_lat)
+    """
     X, y_ratio = [], []
     for qi, si, ei, rti, sti, ov in data_list:
         if sti == 'penalty':
@@ -111,8 +119,7 @@ def build_sequences(data_list, cache, qid_info):
         if ri is None:
             continue
         serial_lat = max(math.exp(ri['lat']) - 1, 0.5)
-        qv = [ri['mem'], ri['disk'], ri['net'], ri['lat'], ri['cpures'],
-              math.log(1 + serial_lat)]
+        qv = [ri['mem'], ri['disk'], ri['net'], ri['lat'], ri['cpures']]
         tr_ = [ri['mem'], ri['disk'], ri['net'], ri['lat'], ri['cpures']]
         seq = []
         peers = [(qid_info[oq][0], oq) for oq in ov
@@ -120,8 +127,7 @@ def build_sequences(data_list, cache, qid_info):
         peers.sort()
         for osv, oq in peers:
             rj = cache[oq]
-            ovv = [rj['mem'], rj['disk'], rj['net'], rj['lat'], rj['cpures'],
-                   rj['lat']]
+            ovv = [rj['mem'], rj['disk'], rj['net'], rj['lat'], rj['cpures']]
             oc = [rj['mem'], rj['disk'], rj['net'], rj['lat'], rj['cpures']]
             c = resource_conflict(tr_, oc)
             seq.append(qv + ovv + [si - osv, 1.0 if osv < si else 0.0] + c)
@@ -188,16 +194,14 @@ class BiLSTM_RNA(nn.Module):
     During training, randomly perturbs resource features to improve
     robustness against XGBoost prediction errors.
 
-    Input layout (19-dim per timestep):
+    Input layout (17-dim per timestep):
       [0:5]   target resources (mem, disk, net, lat, cpures)
-      [5]     target serial_lat_log
-      [6:11]  peer resources
-      [11]    peer serial_lat_log
-      [12]    time_delta
-      [13]    is_before
-      [14:19] resource_conflict (5-dim)
+      [5:10]  peer resources (mem, disk, net, lat, cpures)
+      [10]    time_delta
+      [11]    is_before
+      [12:17] resource_conflict (5-dim)
     """
-    def __init__(self, input_dim=19, hidden_dim=256, num_layers=3,
+    def __init__(self, input_dim=17, hidden_dim=256, num_layers=3,
                  dropout=0.15, noise_level=0.05):
         super().__init__()
         self.noise_level = noise_level
@@ -214,8 +218,7 @@ class BiLSTM_RNA(nn.Module):
         if self.training and self.noise_level > 0:
             X = X.clone()
             X[:, :, 0:5] += torch.randn_like(X[:, :, 0:5]) * self.noise_level
-            X[:, :, 6:11] += torch.randn_like(X[:, :, 6:11]) * self.noise_level
-            X[:, :, 14:19] += torch.randn_like(X[:, :, 14:19]) * self.noise_level * 0.5
+            X[:, :, 5:10] += torch.randn_like(X[:, :, 5:10]) * self.noise_level
         x = self.emb(X)
         packed = nn.utils.rnn.pack_padded_sequence(
             x, lengths.cpu(), batch_first=True, enforce_sorted=True)
@@ -430,7 +433,7 @@ def main():
 
     # ─── Summary ───
     print(f'\n{"=" * 60}')
-    print(f'FINAL RESULTS: 5-Fold CV XGBoost + BiLSTM + RNA(noise={args.noise})')
+    print(f'FINAL RESULTS: 5-Fold CV XGBoost + 17-dim BiLSTM + RNA(noise={args.noise})')
     print(f'{"=" * 60}')
     print(f'{"Seed":>6} {"P50":>7} {"P90":>7} {"P95":>7}')
     print('-' * 30)
