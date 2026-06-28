@@ -88,12 +88,16 @@ def read_network():
 
 def drop_caches():
     for name in TIFLASH:
-        subprocess.run(
-            ["docker", "exec", name, "sh", "-c", "echo 3 > /proc/sys/vm/drop_caches"],
-            capture_output=True, text=True, timeout=10)
+        try:
+            subprocess.run(
+                ["docker", "exec", name, "sh", "-c", "echo 3 > /proc/sys/vm/drop_caches"],
+                capture_output=True, text=True, timeout=10)
+        except:
+            pass  # container may be down — not critical
 
 
 def check_tidb_alive():
+    """Quick check: is TiDB server responsive?"""
     try:
         r = subprocess.run(
             ["mysql", "-h", "172.19.0.11", "-P", "4000", "-u", "root", "-e", "SELECT 1"],
@@ -103,20 +107,53 @@ def check_tidb_alive():
         return False
 
 
+def check_cluster_healthy():
+    """Full check: all containers running + TiFlash tables accessible."""
+    for name in CONTAINERS:
+        try:
+            r = subprocess.run(
+                ["docker", "inspect", name, "--format", "{{.State.Running}}"],
+                capture_output=True, text=True, timeout=5)
+            if r.stdout.strip() != "true":
+                print(f"  *** {name} is NOT running! ***")
+                return False
+        except:
+            return False
+    # Also verify TiFlash tables are accessible
+    try:
+        r = subprocess.run(
+            ["mysql", "-h", "172.19.0.11", "-P", "4000", "-u", "root",
+             "-e", "SELECT COUNT(*) FROM tpch_sf40.supplier"],
+            capture_output=True, text=True, timeout=15)
+        return r.returncode == 0
+    except:
+        return False
+
+
 def restart_tidb():
     print("\n*** TiDB appears DOWN, restarting... ***")
+    # Step 1: Restart Docker containers (includes SSH)
+    try:
+        subprocess.run(
+            ["bash", "/home/anqian/Desktop/my_lab/docker_start.sh"],
+            capture_output=True, text=True, timeout=120)
+    except:
+        pass
+    time.sleep(5)
+    # Step 2: Start TiDB cluster
     try:
         subprocess.run(
             ["docker", "exec", "tidb1", "bash", "/root/tidb_start.sh"],
             capture_output=True, text=True, timeout=120)
     except:
         pass
-    for attempt in range(30):
+    # Step 3: Wait for TiFlash to be fully ready
+    for attempt in range(40):
         if check_tidb_alive():
             print(f"*** TiDB restarted (attempt {attempt+1}) ***\n")
             time.sleep(5)
             return True
-        time.sleep(2)
+        time.sleep(3)
     print("*** FAILED to restart TiDB! ***\n")
     return False
 
@@ -157,11 +194,12 @@ def collect_one_query(qid):
     samp_thread.start()
     time.sleep(0.5)  # let sampler start
 
-    # ─── Execute EXPLAIN ANALYZE ───
+    # ─── Execute EXPLAIN ANALYZE (via -e, safe with subprocess list args) ───
     start_time = time.time()
     timed_out = False
     exit_code = -1
     analyze_output = ""
+    stderr_output = ""
     try:
         r = subprocess.run(
             ["timeout", str(HARD_TIMEOUT_S)] + MYSQL_CMD.split() + ["-e", f"EXPLAIN ANALYZE {sql}"],
@@ -170,6 +208,7 @@ def collect_one_query(qid):
         exit_code = r.returncode
         timed_out = (exit_code == 124)
         analyze_output = r.stdout
+        stderr_output = r.stderr
     except subprocess.TimeoutExpired:
         elapsed = time.time() - start_time
         timed_out = True
@@ -177,14 +216,24 @@ def collect_one_query(qid):
     stop_sampler.set()
     samp_thread.join(timeout=3)
 
-    # ─── Save EXPLAIN ANALYZE result ───
+    # ─── Classify error type ───
     analyze_data = None
+    error_type = None
     if timed_out:
         analyze_data = {"qid": qid, "status": "timeout", "elapsed_s": round(elapsed, 1)}
+        error_type = "timeout"
     elif exit_code != 0:
-        analyze_data = {"qid": qid, "status": "error", "elapsed_s": round(elapsed, 1)}
+        combined_output = (stderr_output + analyze_output).lower()
+        if any(kw in combined_output for kw in ['out of memory', 'oom', 'memory exceeded', 'memory limit', 'alloc']):
+            error_type = "oom"
+        elif any(kw in combined_output for kw in ['server has gone away', 'lost connection', "can't connect", 'error 2003', 'error 2006', 'error 2013']):
+            error_type = "crash"
+        else:
+            error_type = "error"
+        analyze_data = {"qid": qid, "status": error_type, "elapsed_s": round(elapsed, 1),
+                        "stderr": stderr_output[:500]}
     else:
-        # Include header for readability
+        error_type = "ok"
         header = f"-- Query: {qid}\n-- SQL: {sql[:200]}...\n-- Execution time: {elapsed:.1f}s\n\n"
         analyze_data = {"qid": qid, "status": "ok", "elapsed_s": round(elapsed, 1),
                         "output": header + analyze_output}
@@ -252,6 +301,8 @@ def load_done_queries(result_file):
 
 
 def main():
+    import sys
+    sys.stdout.reconfigure(line_buffering=True)
     os.makedirs(ANALYZE_DIR, exist_ok=True)
     os.makedirs(CGROUP_DIR, exist_ok=True)
 
@@ -286,51 +337,94 @@ def main():
 
     n_ok = 0; n_fail = 0; n_timeout = 0; n_error = 0
     consecutive_fails = 0
+    n_crash = 0
 
     for i, qid in enumerate(pending):
-        # Check TiDB health
-        if consecutive_fails >= MAX_CONSECUTIVE_FAILS:
-            if not check_tidb_alive():
-                restart_tidb()
-                consecutive_fails = 0
-                time.sleep(RESTART_WAIT_S)
-
         need_analyze = qid not in done_analyze
         need_cgroup = qid not in done_cgroup
 
-        print(f"[{i+1}/{len(pending)}] Q{qid} ...", end=" ", flush=True)
-        analyze_data, cgroup_data = collect_one_query(qid)
+        # ─── Attempt query with crash-aware retry ───
+        retry = True
+        while retry:
+            print(f"[{i+1}/{len(pending)}] Q{qid} ...", end=" ", flush=True)
+            analyze_data, cgroup_data = collect_one_query(qid)
 
-        if analyze_data is None:
-            print("FAIL (no SQL file)")
-            save_result(RESULT_FILE, qid, "fail")
-            n_fail += 1; consecutive_fails += 1
-            continue
+            if analyze_data is None:
+                print("FAIL (no SQL file)")
+                save_result(RESULT_FILE, qid, "fail")
+                n_fail += 1
+                retry = False
+                continue
 
-        status = analyze_data["status"]
-        consecutive_fails = 0
+            status = analyze_data["status"]
 
-        # ─── Save EXPLAIN ANALYZE ───
-        if need_analyze:
-            if status == "ok":
+            # ─── Handle crash: TiDB is down, restart immediately ──
+            if status == "crash":
+                print(f"CRASH ({analyze_data['elapsed_s']:.0f}s)")
+                n_crash += 1
+                if n_crash >= 2:
+                    # Same query crashed TiDB 3 times → skip it
+                    print(f"  *** Q{qid} crashed TiDB {n_crash}x, skipping ***")
+                    save_result(RESULT_FILE, qid, "skip_crash")
+                    n_error += 1
+                    n_crash = 0
+                    consecutive_fails = 0
+                    retry = False
+                    continue
+                restart_tidb()
+                consecutive_fails = 0
+                time.sleep(RESTART_WAIT_S)
+                continue  # retry same query
+
+            # ─── Handle OOM: check if TiDB crashed, restart if needed ───
+            if status == "oom":
+                consecutive_fails += 1
+                print(f"OOM ({analyze_data['elapsed_s']:.0f}s)")
+                save_result(RESULT_FILE, qid, "oom")
+                n_error += 1
+                # OOM often takes down TiDB — always check health
+                time.sleep(COOLDOWN_S)
+                if not check_tidb_alive() or consecutive_fails >= MAX_CONSECUTIVE_FAILS:
+                    restart_tidb()
+                    consecutive_fails = 0
+                    time.sleep(RESTART_WAIT_S)
+                retry = False
+                continue
+
+            # ─── Handle other errors ───
+            if status == "error":
+                consecutive_fails += 1
+                err_msg = analyze_data.get("stderr", "")[:80] if analyze_data else ""
+                print(f"ERROR ({err_msg})")
+                save_result(RESULT_FILE, qid, "error")
+                n_error += 1
+                if consecutive_fails >= MAX_CONSECUTIVE_FAILS:
+                    restart_tidb()
+                    consecutive_fails = 0
+                    time.sleep(RESTART_WAIT_S)
+                retry = False
+                continue
+
+            if status == "timeout":
+                consecutive_fails += 1
+                print(f"TIMEOUT ({analyze_data['elapsed_s']:.0f}s)")
+                save_result(RESULT_FILE, qid, "timeout")
+                n_timeout += 1
+                retry = False
+                continue
+
+            # ─── OK ───
+            consecutive_fails = 0
+            n_crash = 0
+            retry = False
+
+            if need_analyze:
                 with open(os.path.join(ANALYZE_DIR, f"{qid}.txt"), "w") as f:
                     f.write(analyze_data["output"])
-            elif status == "timeout":
-                with open(os.path.join(ANALYZE_DIR, f"{qid}.txt"), "w") as f:
-                    f.write(f"-- Query {qid}: TIMEOUT ({analyze_data['elapsed_s']:.0f}s)\n")
-                n_timeout += 1
-            else:
-                with open(os.path.join(ANALYZE_DIR, f"{qid}.txt"), "w") as f:
-                    f.write(f"-- Query {qid}: ERROR\n")
-                n_error += 1
+            if need_cgroup and cgroup_data is not None:
+                with open(os.path.join(CGROUP_DIR, f"{qid}.json"), "w") as f:
+                    json.dump(cgroup_data, f)
 
-        # ─── Save cgroup ───
-        if need_cgroup and cgroup_data is not None:
-            with open(os.path.join(CGROUP_DIR, f"{qid}.json"), "w") as f:
-                json.dump(cgroup_data, f)
-
-        # ─── Status reporting ───
-        if status == "ok":
             net_t = sum(cgroup_data.get("network_delta_bytes", {}).values()) if cgroup_data else 0
             mem_t = sum(cgroup_data.get("memory_delta_bytes", {}).values()) if cgroup_data else 0
             disk_t = sum(cgroup_data.get("disk_delta_bytes", {}).values()) if cgroup_data else 0
@@ -341,16 +435,12 @@ def main():
             print(f"OK {analyze_data['elapsed_s']:.0f}s m={fmt(mem_t)} n={fmt(net_t)} d={fmt(disk_t)}")
             save_result(RESULT_FILE, qid, "ok")
             n_ok += 1
-        elif status == "timeout":
-            print(f"TIMEOUT ({analyze_data['elapsed_s']:.0f}s)")
-            save_result(RESULT_FILE, qid, "timeout")
-            n_timeout += 1
-            consecutive_fails += 1
-        else:
-            print("ERROR")
-            save_result(RESULT_FILE, qid, "error")
-            n_error += 1
-            consecutive_fails += 1
+        # --- Post-query cluster health check ---
+        if not check_cluster_healthy():
+            print(f"  *** Cluster unhealthy after Q{qid}, restarting... ***")
+            restart_tidb()
+            time.sleep(RESTART_WAIT_S)
+
 
         # ─── Periodic progress ───
         if (n_ok + n_fail + n_timeout + n_error) % 50 == 0:

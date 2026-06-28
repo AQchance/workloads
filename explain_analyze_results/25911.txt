@@ -1,0 +1,39 @@
+-- Query: 25911
+-- SQL: WITH RankedOrders AS (
+    SELECT 
+        o.o_orderkey,
+        o.o_orderdate,
+        o.o_totalprice,
+        RANK() OVER (PARTITION BY o.o_orderstatus ORDER BY o.o_totalprice DESC) AS order_rank
+  ...
+-- Execution time: 9.6s
+
+id	estRows	actRows	task	access object	execution info	operator info	memory	disk
+Projection_204	12.17	0	root		time:8.06s, loops:1, RU:16199.154327, Concurrency:OFF	tpch_sf40.part.p_partkey, tpch_sf40.part.p_name, tpch_sf40.part.p_retailprice, Column#157->Column#164, Column#158->Column#165, tpch_sf40.orders.o_orderdate, Column#160->Column#167	6.31 KB	N/A
+└─Sort_206	12.17	0	root		time:8.06s, loops:1	Column#157:desc, tpch_sf40.part.p_retailprice	0 Bytes	0 Bytes
+  └─Window_209	12.17	0	root		time:8.06s, loops:1	rank()->Column#160 over(order by tpch_sf40.orders.o_totalprice desc)	N/A	N/A
+    └─Sort_418	12.17	0	root		time:8.06s, loops:1	tpch_sf40.orders.o_totalprice:desc	0 Bytes	0 Bytes
+      └─Projection_266	12.17	0	root		time:8.06s, loops:1, Concurrency:OFF	tpch_sf40.part.p_partkey, tpch_sf40.part.p_name, tpch_sf40.part.p_retailprice, coalesce(Column#63, 0)->Column#157, coalesce(Column#64, 0)->Column#158, tpch_sf40.orders.o_orderdate, tpch_sf40.orders.o_totalprice	5.94 KB	N/A
+        └─IndexJoin_285	12.17	0	root		time:8.06s, loops:1	semi join, inner:TableReader_281, outer key:tpch_sf40.lineitem.l_suppkey, inner key:tpch_sf40.supplier.s_suppkey, equal cond:eq(tpch_sf40.lineitem.l_suppkey, tpch_sf40.supplier.s_suppkey)	0 Bytes	N/A
+          ├─HashJoin_296(Build)	15.22	0	root		time:8.06s, loops:1, build_hash_table:{total:10.3ms, fetch:10.3ms, build:0s}, probe:{concurrency:2, total:16.1s, max:8.06s, probe:266.2ms, fetch and wait:15.9s}	left outer join, equal:[eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)]	0 Bytes	0 Bytes
+          │ ├─IndexHashJoin_307(Build)	15.11	0	root		time:10.2ms, loops:1	inner join, inner:IndexReader_304, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.lineitem.l_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.lineitem.l_partkey)	0 Bytes	N/A
+          │ │ ├─IndexHashJoin_353(Build)	0.50	0	root		time:10ms, loops:1	left outer join, inner:HashAgg_347, outer key:tpch_sf40.part.p_partkey, inner key:tpch_sf40.partsupp.ps_partkey, equal cond:eq(tpch_sf40.part.p_partkey, tpch_sf40.partsupp.ps_partkey)	0 Bytes	N/A
+          │ │ │ ├─TableReader_367(Build)	0.50	0	root		time:9.4ms, loops:1, cop_task: {num: 2, max: 0s, min: 0s, avg: 0s, p95: 0s, copr_cache_hit_ratio: 0.00}	MppVersion: 2, data:ExchangeSender_366	621 Bytes	N/A
+          │ │ │ │ └─ExchangeSender_366	0.50	0	mpp[tiflash]		tiflash_task:{proc max:11.5ms, min:5.3ms, avg: 8.42ms, p80:11.5ms, p95:11.5ms, iters:0, tasks:2, threads:4}	ExchangeType: PassThrough	N/A	N/A
+          │ │ │ │   └─Selection_365	0.50	0	mpp[tiflash]		tiflash_task:{proc max:11.5ms, min:5.3ms, avg: 8.42ms, p80:11.5ms, p95:11.5ms, iters:0, tasks:2, threads:4}	le(tpch_sf40.part.p_size, 25)	N/A	N/A
+          │ │ │ │     └─TableFullScan_364	1.00	0	mpp[tiflash]	table:p	tiflash_task:{proc max:10.5ms, min:5.3ms, avg: 7.92ms, p80:10.5ms, p95:10.5ms, iters:0, tasks:2, threads:4}, tiflash_scan:{mvcc_input_rows:0, mvcc_input_bytes:0, mvcc_output_rows:0, lm_skip_rows:0, local_regions:5, remote_regions:0, tot_learner_read:0ms, region_balance:{instance_num: 2, max/min: 3/2=1.500000}, delta_rows:0, delta_bytes:0, segments:11, stale_read_regions:0, tot_build_snapshot:0ms, tot_build_bitmap:0ms, tot_build_inputstream:0ms, min_local_stream:3ms, max_local_stream:7ms, dtfile:{data_scanned_rows:0, data_skipped_rows:0, mvcc_scanned_rows:0, mvcc_skipped_rows:0, lm_filter_scanned_rows:0, lm_filter_skipped_rows:0, tot_rs_index_check:0ms, tot_read:0ms}}	pushed down filter:gt(tpch_sf40.part.p_retailprice, NULL), keep order:false	N/A	N/A
+          │ │ │ └─HashAgg_347(Probe)	3993450.36	0	root			group by:tpch_sf40.partsupp.ps_partkey, funcs:count(distinct tpch_sf40.partsupp.ps_suppkey)->Column#63, funcs:sum(tpch_sf40.partsupp.ps_supplycost)->Column#64, funcs:firstrow(tpch_sf40.partsupp.ps_partkey)->tpch_sf40.partsupp.ps_partkey	N/A	N/A
+          │ │ │   └─TableReader_346	0.50	0	root			data:TableRangeScan_345	N/A	N/A
+          │ │ │     └─TableRangeScan_345	0.50	0	cop[tikv]	table:ps		range: decided by [eq(tpch_sf40.partsupp.ps_partkey, tpch_sf40.part.p_partkey)], keep order:false	N/A	N/A
+          │ │ └─IndexReader_304(Probe)	15.11	0	root			index:IndexRangeScan_303	N/A	N/A
+          │ │   └─IndexRangeScan_303	15.11	0	cop[tikv]	table:l, index:idx_lineitem_fk2(l_partkey, l_suppkey)		range: decided by [eq(tpch_sf40.lineitem.l_partkey, tpch_sf40.part.p_partkey)], keep order:false	N/A	N/A
+          │ └─TableReader_402(Probe)	9091229.18	9105203	root		time:7.81s, loops:8893, cop_task: {num: 141, max: 0s, min: 0s, avg: 0s, p95: 0s, copr_cache_hit_ratio: 0.00}	MppVersion: 2, data:ExchangeSender_401	4.57 MB	N/A
+          │   └─ExchangeSender_401	9091229.18	9105203	mpp[tiflash]		tiflash_task:{proc max:6.45s, min:2.16s, avg: 4.3s, p80:6.45s, p95:6.45s, iters:139, tasks:2, threads:4}	ExchangeType: PassThrough	N/A	N/A
+          │     └─Window_399	9091229.18	9105203	mpp[tiflash]		tiflash_task:{proc max:4.48s, min:2.16s, avg: 3.32s, p80:4.48s, p95:4.48s, iters:139, tasks:2, threads:4}	rank()->Column#95 over(partition by tpch_sf40.orders.o_orderstatus order by tpch_sf40.orders.o_totalprice desc), stream_count: 2	N/A	N/A
+          │       └─Sort_250	9091229.18	9105203	mpp[tiflash]		tiflash_task:{proc max:4.37s, min:2.16s, avg: 3.27s, p80:4.37s, p95:4.37s, iters:139, tasks:2, threads:4}	tpch_sf40.orders.o_orderstatus, tpch_sf40.orders.o_totalprice:desc, stream_count: 2	N/A	N/A
+          │         └─ExchangeReceiver_249	9091229.18	9105203	mpp[tiflash]		tiflash_task:{proc max:2.16s, min:2.16s, avg: 2.16s, p80:2.16s, p95:2.16s, iters:483, tasks:2, threads:4}	stream_count: 2	N/A	N/A
+          │           └─ExchangeSender_248	9091229.18	9105203	mpp[tiflash]		tiflash_task:{proc max:2.16s, min:0s, avg: 1.08s, p80:2.16s, p95:2.16s, iters:965, tasks:2, threads:4}	ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: tpch_sf40.orders.o_orderstatus, collate: utf8mb4_bin], stream_count: 2	N/A	N/A
+          │             └─TableFullScan_246	9091229.18	9105203	mpp[tiflash]	table:o	tiflash_task:{proc max:2.12s, min:0s, avg: 1.06s, p80:2.12s, p95:2.12s, iters:965, tasks:2, threads:4}, tiflash_wait: {pipeline_queue_wait: 6ms}, tiflash_scan:{mvcc_input_rows:0, mvcc_input_bytes:0, mvcc_output_rows:0, lm_skip_rows:0, local_regions:34, remote_regions:0, tot_learner_read:22ms, region_balance:{instance_num: 2, max/min: 18/16=1.125000}, delta_rows:0, delta_bytes:0, segments:68, stale_read_regions:0, tot_build_snapshot:0ms, tot_build_bitmap:1ms, tot_build_inputstream:278ms, min_local_stream:2040ms, max_local_stream:2104ms, dtfile:{data_scanned_rows:60000000, data_skipped_rows:0, mvcc_scanned_rows:0, mvcc_skipped_rows:0, lm_filter_scanned_rows:60000000, lm_filter_skipped_rows:0, tot_rs_index_check:2ms, tot_read:7753ms}}	pushed down filter:ge(tpch_sf40.orders.o_orderdate, 1997-01-01 00:00:00.000000), lt(tpch_sf40.orders.o_orderdate, 1998-01-01 00:00:00.000000), keep order:false	N/A	N/A
+          └─TableReader_281(Probe)	7.59	0	root			data:Selection_280	N/A	N/A
+            └─Selection_280	7.59	0	cop[tikv]			gt(tpch_sf40.supplier.s_acctbal, 4496.104108)	N/A	N/A
+              └─TableRangeScan_279	15.22	0	cop[tikv]	table:s		range: decided by [tpch_sf40.lineitem.l_suppkey], keep order:false	N/A	N/A
