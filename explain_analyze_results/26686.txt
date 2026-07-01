@@ -1,0 +1,31 @@
+-- Query: 26686
+-- SQL: SELECT 
+    n.n_name AS nation_name,
+    r.r_name AS region_name,
+    COUNT(DISTINCT c.c_custkey) AS customer_count,
+    SUM(l.l_quantity) AS total_quantity,
+    SUM(l.l_extendedprice * (1 - l.l_disco...
+-- Execution time: 0.1s
+
+id	estRows	actRows	task	access object	execution info	operator info	memory	disk
+Sort_24	1.00	0	root		time:4.44ms, loops:1, RU:0.981112	Column#43:desc, Column#41	0 Bytes	0 Bytes
+└─Projection_26	1.00	0	root		time:4.4ms, loops:1, Concurrency:OFF	tpch_sf40.nation.n_name, tpch_sf40.region.r_name, Column#41, Column#42, Column#43, Column#44	5.82 KB	N/A
+  └─HashAgg_28	1.00	0	root		time:4.4ms, loops:1	group by:Column#71, Column#72, funcs:count(distinct Column#67)->Column#41, funcs:sum(Column#68)->Column#42, funcs:sum(Column#69)->Column#43, funcs:avg(Column#70)->Column#44, funcs:firstrow(Column#71)->tpch_sf40.nation.n_name, funcs:firstrow(Column#72)->tpch_sf40.region.r_name	6.55 KB	0 Bytes
+    └─Projection_232	14750406.59	0	root		time:4.4ms, loops:1, Concurrency:2	tpch_sf40.customer.c_custkey->Column#67, tpch_sf40.lineitem.l_quantity->Column#68, mul(tpch_sf40.lineitem.l_extendedprice, minus(1, tpch_sf40.lineitem.l_discount))->Column#69, tpch_sf40.lineitem.l_discount->Column#70, tpch_sf40.nation.n_name->Column#71, tpch_sf40.region.r_name->Column#72	23.3 KB	N/A
+      └─Projection_32	14750406.59	0	root		time:4.39ms, loops:1, Concurrency:2	tpch_sf40.customer.c_custkey, tpch_sf40.nation.n_name, tpch_sf40.region.r_name, tpch_sf40.lineitem.l_quantity, tpch_sf40.lineitem.l_extendedprice, tpch_sf40.lineitem.l_discount	23.3 KB	N/A
+        └─IndexJoin_43	14750406.59	0	root		time:4.38ms, loops:1	inner join, inner:TableReader_39, outer key:tpch_sf40.orders.o_orderkey, inner key:tpch_sf40.lineitem.l_orderkey, equal cond:eq(tpch_sf40.orders.o_orderkey, tpch_sf40.lineitem.l_orderkey)	0 Bytes	N/A
+          ├─IndexHashJoin_87(Build)	3661626.50	0	root		time:4.34ms, loops:1	inner join, inner:IndexReader_84, outer key:tpch_sf40.customer.c_custkey, inner key:tpch_sf40.orders.o_custkey, equal cond:eq(tpch_sf40.customer.c_custkey, tpch_sf40.orders.o_custkey)	0 Bytes	N/A
+          │ ├─IndexHashJoin_106(Build)	239999.60	0	root		time:4.33ms, loops:1	inner join, inner:IndexReader_103, outer key:tpch_sf40.nation.n_nationkey, inner key:tpch_sf40.customer.c_nationkey, equal cond:eq(tpch_sf40.nation.n_nationkey, tpch_sf40.customer.c_nationkey)	0 Bytes	N/A
+          │ │ ├─IndexJoin_137(Build)	1.00	0	root		time:4.3ms, loops:1	inner join, inner:TableReader_134, outer key:tpch_sf40.nation.n_regionkey, inner key:tpch_sf40.region.r_regionkey, equal cond:eq(tpch_sf40.nation.n_regionkey, tpch_sf40.region.r_regionkey)	0 Bytes	N/A
+          │ │ │ ├─TableReader_169(Build)	1.00	0	root		time:4.27ms, loops:1, cop_task: {num: 1, max: 4.41ms, proc_keys: 25, tot_proc: 1.38ms, tot_wait: 591.9µs, copr_cache_hit_ratio: 0.00, build_task_duration: 2.65µs, max_distsql_concurrency: 1}, rpc_info:{Cop:{num_rpc:1, total_time:4.4ms}}	data:Selection_168	282 Bytes	N/A
+          │ │ │ │ └─Selection_168	1.00	0	cop[tikv]		tikv_task:{time:1ms, loops:1}, scan_detail: {total_process_keys: 25, total_process_keys_size: 3109, total_keys: 26, get_snapshot_time: 578µs, rocksdb: {key_skipped_count: 25, block: {cache_hit_count: 3, read_count: 5, read_byte: 2.89 KB, read_time: 7.84µs}}}, time_detail: {total_process_time: 1.38ms, total_suspend_time: 11.3µs, total_wait_time: 591.9µs, total_kv_read_wall_time: 1ms, tikv_wall_time: 4.26ms}	in(tpch_sf40.nation.n_name, "Germany", "France", "USA")	N/A	N/A
+          │ │ │ │   └─TableFullScan_167	25.00	25	cop[tikv]	table:n	tikv_task:{time:1ms, loops:1}	keep order:false	N/A	N/A
+          │ │ │ └─TableReader_134(Probe)	1.00	0	root			data:TableRangeScan_133	N/A	N/A
+          │ │ │   └─TableRangeScan_133	1.00	0	cop[tikv]	table:r		range: decided by [tpch_sf40.nation.n_regionkey], keep order:false	N/A	N/A
+          │ │ └─IndexReader_103(Probe)	239999.60	0	root			index:IndexRangeScan_102	N/A	N/A
+          │ │   └─IndexRangeScan_102	239999.60	0	cop[tikv]	table:c, index:idx_customer_fk1(c_nationkey)		range: decided by [eq(tpch_sf40.customer.c_nationkey, tpch_sf40.nation.n_nationkey)], keep order:false	N/A	N/A
+          │ └─IndexReader_84(Probe)	3661626.50	0	root			index:IndexRangeScan_83	N/A	N/A
+          │   └─IndexRangeScan_83	3661626.50	0	cop[tikv]	table:o, index:idx_orders_fk1(o_custkey)		range: decided by [eq(tpch_sf40.orders.o_custkey, tpch_sf40.customer.c_custkey)], keep order:false	N/A	N/A
+          └─TableReader_39(Probe)	418549.74	0	root			data:Selection_38	N/A	N/A
+            └─Selection_38	418549.74	0	cop[tikv]			ge(tpch_sf40.lineitem.l_shipdate, 1997-01-01), lt(tpch_sf40.lineitem.l_shipdate, 1997-10-01)	N/A	N/A
+              └─TableRangeScan_37	3661626.50	0	cop[tikv]	table:l		range: decided by [eq(tpch_sf40.lineitem.l_orderkey, tpch_sf40.orders.o_orderkey)], keep order:false	N/A	N/A
