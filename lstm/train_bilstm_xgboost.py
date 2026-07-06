@@ -168,7 +168,7 @@ def train(train_ds, val_ds, test_ds, ym, ys, input_dim):
     pr = np.maximum(np.exp(pz * ys + ym) - 1, 0.01)
     tr = np.maximum(np.exp(tz * ys + ym) - 1, 0.01)
     qe = np.sort(np.maximum(pr / tr, tr / pr))
-    return qe
+    return qe, best_state
 
 
 # ═══════════ Main ═══════════
@@ -231,9 +231,18 @@ def main():
     Xn_te, l_te, yn_te, _, _, _, _ = pad_normalize(X_te, y_te, ml, Xm, Xs, ym, ys)
 
     print(f'[5] Training...')
-    qe = train(RatioDataset(Xn_tr, l_tr, yn_tr),
+    qe, best_state = train(RatioDataset(Xn_tr, l_tr, yn_tr),
                RatioDataset(Xn_va, l_va, yn_va),
                RatioDataset(Xn_te, l_te, yn_te), ym, ys, d_in)
+
+    # Save model + norm stats
+    ckpt_dir = os.path.join(ROOT, 'checkpoints')
+    model_path = os.path.join(ckpt_dir, 'bilstm_xgboost.pt')
+    torch.save(best_state, model_path)
+    norm_path = os.path.join(ckpt_dir, 'bilstm_xgboost_norm.npz')
+    np.savez(norm_path, X_mean=Xm, X_std=Xs, y_mean=ym, y_std=ys)
+    print(f'  Saved: {model_path}')
+    print(f'  Saved: {norm_path}')
 
     n = len(qe)
     print(f'\n{"="*55}')
