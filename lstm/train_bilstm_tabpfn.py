@@ -17,7 +17,7 @@ EPOCHS = 250
 # ═══════════ Stage 1: Load TabPFN OOF Predictions ═══════════
 
 def load_resource_cache():
-    path = os.path.join(CKPT_DIR, 'oof_tabpfn_k5.json')
+    path = os.path.join(ROOT, 'gnn/tabpfn_1000_predictions_oof.json')
     with open(path) as f:
         return json.load(f)
 
