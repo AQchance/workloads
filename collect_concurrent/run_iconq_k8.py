@@ -13,8 +13,8 @@ sys.path.insert(0, '/home/anqian/Desktop/my_lab/workloads/lstm')
 ARRIVAL_FILE = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/arrival_times_3r_poisson.csv'
 SQL_DIR     = '/home/anqian/Desktop/my_lab/workloads/SQLStorm'
 RESOURCE_CACHE = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/tabpfn_258_predictions_oof.json'
-MODEL_PATH  = '/home/anqian/Desktop/my_lab/workloads/checkpoints/bilstm_tabpfn.pt'
-NORM_PATH   = '/home/anqian/Desktop/my_lab/workloads/checkpoints/bilstm_tabpfn_norm.npz'
+MODEL_PATH  = '/home/anqian/code/python/workloads/final_queries/bilstm_tabpfn.pt'
+NORM_PATH   = '/home/anqian/code/python/workloads/final_queries/bilstm_tabpfn_norm.npz'
 OUT_CSV     = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/iconq_k8_trace.csv'
 CKPT_FILE   = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/iconq_k8_checkpoint.json'
 
