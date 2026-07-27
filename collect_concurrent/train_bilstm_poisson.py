@@ -1,6 +1,6 @@
 """
 TabPFN → Bi-LSTM on 258-query batch traces (K4 + K8).
-Self-contained script for /home/anqian/Desktop/my_lab/workloads/final_queries/
+Self-contained script for /home/anqian/Desktop/my_lab/workloads/collect_concurrent/
 
 Features: 17-dim interaction vector (same as lstm/train_bilstm_tabpfn.py)
 Model:    3-layer Bi-LSTM, last-hidden pooling
@@ -9,7 +9,7 @@ Split:    80/10/10 query-level hard split, seed=42
 import os, csv, json, math, numpy as np, torch, torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
-DIR = '/home/anqian/Desktop/my_lab/workloads/final_queries'
+DIR = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent'
 RESOURCE_PATH = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/tabpfn_258_predictions_oof.json'
 
 DIMS = ['mem', 'disk', 'net', 'lat', 'cpures']
@@ -201,7 +201,7 @@ def main():
 
     # Collect all unique qids from traces
     all_qids = []
-    for trace_name in ['k4_batch_trace.csv', 'k8_batch_trace.csv']:
+    for trace_name in ['fifo_k4_trace.csv', 'fifo_k8_trace.csv']:
         path = os.path.join(DIR, trace_name)
         timeline = []
         with open(path) as f:
@@ -232,7 +232,7 @@ def main():
     X_tr, X_va, X_te = [], [], []
     y_tr, y_va, y_te = [], [], []
 
-    for trace_name in ['k4_batch_trace.csv', 'k8_batch_trace.csv']:
+    for trace_name in ['fifo_k4_trace.csv', 'fifo_k8_trace.csv']:
         path = os.path.join(DIR, trace_name)
         timeline = []
         with open(path) as f:
@@ -305,8 +305,8 @@ def main():
     qe, best_state = train(train_ds, val_ds, test_ds, ym, ys, d_in, 'K4+K8')
 
     # Save
-    model_path = os.path.join(DIR, 'bilstm_tabpfn.pt')
-    norm_path = os.path.join(DIR, 'bilstm_tabpfn_norm.npz')
+    model_path = os.path.join(DIR, 'bilstm_poisson.pt')
+    norm_path = os.path.join(DIR, 'bilstm_poisson_norm.npz')
     torch.save(best_state, model_path)
     np.savez(norm_path, X_mean=Xm, X_std=Xs, y_mean=ym, y_std=ys)
     print(f'  Saved: {model_path}')

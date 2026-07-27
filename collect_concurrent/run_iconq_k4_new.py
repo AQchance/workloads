@@ -15,8 +15,8 @@ SQL_DIR     = '/home/anqian/Desktop/my_lab/workloads/SQLStorm'
 RESOURCE_CACHE = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/tabpfn_258_predictions_oof.json'
 MODEL_PATH  = '/home/anqian/Desktop/my_lab/workloads/final_queries/bilstm_tabpfn.pt'
 NORM_PATH   = '/home/anqian/Desktop/my_lab/workloads/final_queries/bilstm_tabpfn_norm.npz'
-OUT_CSV     = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/iconq_k4_trace.csv'
-CKPT_FILE   = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/iconq_k4_checkpoint.json'
+OUT_CSV     = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/iconq_k4_new_trace.csv'
+CKPT_FILE   = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/iconq_k4_new_checkpoint.json'
 
 K, TIMEOUT_S, COOLDOWN_S = 4, 600, 30
 DIMS = ['mem', 'disk', 'net', 'lat', 'cpures']

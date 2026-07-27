@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ICONQ-style scheduler — real execution, K=4, Bi-LSTM slowdown prediction.
+ICONQ-style scheduler — real execution, K=8, Bi-LSTM slowdown prediction (3-round model).
 Uses arrival_times_3r_poisson.csv, same crash recovery as FIFO scheduler.
 """
 import subprocess, time, threading, os, csv, json, math, sys
@@ -13,10 +13,10 @@ sys.path.insert(0, '/home/anqian/Desktop/my_lab/workloads/lstm')
 ARRIVAL_FILE = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/arrival_times_3r_poisson.csv'
 SQL_DIR     = '/home/anqian/Desktop/my_lab/workloads/SQLStorm'
 RESOURCE_CACHE = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/tabpfn_258_predictions_oof.json'
-MODEL_PATH  = '/home/anqian/code/python/workloads/final_queries/bilstm_tabpfn.pt'
-NORM_PATH   = '/home/anqian/code/python/workloads/final_queries/bilstm_tabpfn_norm.npz'
-OUT_CSV     = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/iconq_k8_trace.csv'
-CKPT_FILE   = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/iconq_k8_checkpoint.json'
+MODEL_PATH  = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/bilstm_3r.pt'
+NORM_PATH   = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/bilstm_3r_norm.npz'
+OUT_CSV     = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/iconq_k8_3r_trace.csv'
+CKPT_FILE   = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/iconq_k8_3r_checkpoint.json'
 
 K, TIMEOUT_S, COOLDOWN_S = 8, 600, 30
 DIMS = ['mem', 'disk', 'net', 'lat', 'cpures']
@@ -133,7 +133,7 @@ def main():
     arrivals = load_arrivals()
     N = len(arrivals)
     predictor = SlowdownPredictor()
-    print(f"ICONQ K={K} | {N} queries | max arrival {arrivals[-1][1]/3600:.1f}h | timeout={TIMEOUT_S}s")
+    print(f"ICONQ K={K} | {N} queries | max arrival {arrivals[-1][1]/3600:.1f}h | timeout={TIMEOUT_S}s | model=bilstm_3r")
     print(f"Bi-LSTM: {sum(p.numel() for p in predictor.model.parameters()):,} params, {len(predictor.resources)} resources")
 
     ck = load_checkpoint()

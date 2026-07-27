@@ -1,6 +1,6 @@
 """
 TabPFN → Bi-LSTM on 258-query batch traces (K4 + K8).
-Self-contained script for /home/anqian/Desktop/my_lab/workloads/final_queries/
+Self-contained script for /home/anqian/Desktop/my_lab/workloads/collect_concurrent/
 
 Features: 17-dim interaction vector (same as lstm/train_bilstm_tabpfn.py)
 Model:    3-layer Bi-LSTM, last-hidden pooling
@@ -9,7 +9,7 @@ Split:    80/10/10 query-level hard split, seed=42
 import os, csv, json, math, numpy as np, torch, torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
-DIR = '/home/anqian/Desktop/my_lab/workloads/final_queries'
+DIR = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent'
 RESOURCE_PATH = '/home/anqian/Desktop/my_lab/workloads/collect_concurrent/tabpfn_258_predictions_oof.json'
 
 DIMS = ['mem', 'disk', 'net', 'lat', 'cpures']
@@ -24,25 +24,12 @@ def resource_conflict(t, c):
     return list(np.minimum(t, c) / np.maximum(np.abs(t) + np.abs(c) + 1e-8, 1e-8))
 
 
-def build_sequences(trace_csv, cache):
-    """Build 17-dim interaction sequences from trace CSV."""
-    timeline = []
-    with open(trace_csv) as f:
-        for row in csv.DictReader(f):
-            t0 = float(row['start'])
-            rt = float(row['runtime'])
-            actual = 60.0 if row['status'] == 'penalty' else rt
-            t1 = t0 + actual
-            timeline.append((t0, t1, row['qid'], actual, row['status']))
-
-    qid_info = {q: (s, e) for s, e, q, _, _ in timeline}
-
-    # Build concurrent event list
-    ci = []
-    for i, (si, ei, qi, rti, sti) in enumerate(timeline):
-        ov = [qj for j, (sj, ej, qj, _, _) in enumerate(timeline)
-              if i != j and sj < ei and ej > si]
-        ci.append((qi, si, ei, rti, sti, ov))
+def build_sequences_from_events(ci, cache):
+    """Build 17-dim interaction sequences from pre-parsed event list (ci)."""
+    # Build qid_info from ci
+    qid_info = {}
+    for qi, si, ei, _, _, _ in ci:
+        qid_info[qi] = (si, ei)
 
     X, y_ratio = [], []
     for qi, si, ei, rti, sti, ov in ci:
@@ -191,134 +178,76 @@ def train(train_ds, val_ds, test_ds, ym, ys, input_dim, label, seed=SEED, epochs
 
 def main():
     print('=' * 55)
-    print('TabPFN → Bi-LSTM on 258-query K4+K8 Traces')
+    print('TabPFN → Bi-LSTM on 258-query K4+K8 Traces (5-fold CV)')
     print('=' * 55)
 
-    # Load resource cache
     with open(RESOURCE_PATH) as f:
         cache = json.load(f)
     print(f'[1] TabPFN resources: {len(cache)} queries')
 
-    # Collect all unique qids from traces
+    # Collect all unique qids and build full timeline
     all_qids = []
-    for trace_name in ['k4_batch_trace.csv', 'k8_batch_trace.csv']:
+    ci = []
+    for trace_name in ['fifo_k4_trace.csv', 'fifo_k8_trace.csv']:
         path = os.path.join(DIR, trace_name)
-        timeline = []
-        with open(path) as f:
-            for row in csv.DictReader(f):
-                timeline.append((float(row['start']),
-                                 float(row['start']) + (60.0 if row['status'] == 'penalty' else float(row['runtime'])),
-                                 row['qid'], float(row['runtime']), row['status']))
-        all_qids.extend(set(q for _, _, q, _, _ in timeline if q in cache))
-
-    unique_qids = sorted(set(all_qids))
-    print(f'[2] Unique queries: {len(unique_qids)}')
-
-    # 80/10/10 split
-    np.random.seed(SEED)
-    np.random.shuffle(unique_qids)
-    n_tr = int(len(unique_qids) * 0.8)
-    n_va = int(len(unique_qids) * 0.1)
-    train_qids = set(unique_qids[:n_tr])
-    val_qids = set(unique_qids[n_tr:n_tr + n_va])
-    test_qids = set(unique_qids[n_tr + n_va:])
-    print(f'[3] Split: {len(train_qids)}/{len(val_qids)}/{len(test_qids)}')
-
-    # Split data by query ID (need to track which sequence belongs to which query)
-    # Each sequence corresponds to a target query at a specific time.
-    # For simplicity, use time-based split: first 70% time = train, etc.
-    # Actually, let's do proper query-level split.
-
-    X_tr, X_va, X_te = [], [], []
-    y_tr, y_va, y_te = [], [], []
-
-    for trace_name in ['k4_batch_trace.csv', 'k8_batch_trace.csv']:
-        path = os.path.join(DIR, trace_name)
-        timeline = []
+        trace = []
         with open(path) as f:
             for row in csv.DictReader(f):
                 t0 = float(row['start'])
                 rt = float(row['runtime'])
-                actual = 60.0 if row['status'] == 'penalty' else rt
-                timeline.append((t0, t0 + actual, row['qid'], actual, row['status']))
-
-        qid_info = {q: (s, e) for s, e, q, _, _ in timeline}
-        ci = []
-        for i, (si, ei, qi, rti, sti) in enumerate(timeline):
-            ov = [qj for j, (sj, ej, qj, _, _) in enumerate(timeline)
+                actual = rt
+                t1 = t0 + actual
+                trace.append((t0, t1, row['qid'], actual, row['status']))
+        all_qids.extend([q for _, _, q, _, _ in trace])
+        for i, (si, ei, qi, rti, sti) in enumerate(trace):
+            ov = [qj for j, (sj, ej, qj, _, _) in enumerate(trace)
                   if i != j and sj < ei and ej > si]
             ci.append((qi, si, ei, rti, sti, ov))
+    unique_qids = sorted(set(all_qids))
+    print(f'[2] {len(unique_qids)} unique queries')
 
-        for qi, si, ei, rti, sti, ov in ci:
-            if sti == 'penalty' or qi not in cache:
-                continue
-            pred_i = cache[qi]
-            serial_lat = max(pred_i.get('serial_lat_s', 10), 0.5)
-            qv = [pred_i[d] for d in DIMS]
-            tr_ = [pred_i[d] for d in DIMS]
-            seq = []
-            peers = [(qid_info[oq][0], oq) for oq in ov
-                     if oq in qid_info and oq in cache]
-            peers.sort()
-            for osv, oq in peers:
-                pred_j = cache[oq]
-                ovv = [pred_j[d] for d in DIMS]
-                oc = [pred_j[d] for d in DIMS]
-                c = resource_conflict(tr_, oc)
-                seq.append(qv + ovv + [si - osv, 1.0 if osv < si else 0.0] + c)
-            if seq:
-                if qi in train_qids:
-                    X_tr.append(seq); y_tr.append(rti / serial_lat)
-                elif qi in val_qids:
-                    X_va.append(seq); y_va.append(rti / serial_lat)
-                elif qi in test_qids:
-                    X_te.append(seq); y_te.append(rti / serial_lat)
+    # Get input dim
+    X_sample, _ = build_sequences_from_events([c for c in ci[:1]], cache)
+    d_in = len(X_sample[0][0]) if X_sample else 17
+    print(f'[3] Input dim: {d_in}')
 
-    print(f'[4] Seqs: {len(X_tr)} train / {len(X_va)} val / {len(X_te)} test')
-
-    if len(X_tr) == 0:
-        print('ERROR: No training data!')
-        return
-
-    d_in = len(X_tr[0][0])
-    ml = max(max(len(s) for s in X_tr),
-             max(len(s) for s in X_va) if X_va else 0,
-             max(len(s) for s in X_te) if X_te else 0)
-    print(f'    Dim={d_in}, max_len={ml}')
-
-    Xn_tr, l_tr, yn_tr, Xm, Xs, ym, ys = pad_normalize(X_tr, y_tr, ml)
-    Xn_va, l_va, yn_va, _, _, _, _ = pad_normalize(X_va, y_va, ml, Xm, Xs, ym, ys) if X_va else (None, None, None, None, None, None, None)
-    Xn_te, l_te, yn_te, _, _, _, _ = pad_normalize(X_te, y_te, ml, Xm, Xs, ym, ys) if X_te else (None, None, None, None, None, None, None)
-
-    if X_va:
-        train_ds = RatioDataset(Xn_tr, l_tr, yn_tr)
-        val_ds = RatioDataset(Xn_va, l_va, yn_va)
+    # 5-fold CV
+    from sklearn.model_selection import KFold
+    kf = KFold(n_splits=5, shuffle=True, random_state=SEED)
+    all_qe = []
+    unique_arr = np.array(unique_qids)
+    
+    for fold_idx, (train_idx, test_idx) in enumerate(kf.split(unique_arr), 1):
+        train_qids = set(unique_arr[train_idx])
+        test_qids = set(unique_arr[test_idx])
+        train_ev = [c for c in ci if c[0] in train_qids]
+        test_ev = [c for c in ci if c[0] in test_qids]
+        
+        X_tr, y_tr = build_sequences_from_events(train_ev, cache)
+        X_te, y_te = build_sequences_from_events(test_ev, cache)
+        if not X_tr or not X_te: continue
+        
+        ml = max(max(len(s) for s in X_tr), max(len(s) for s in X_te))
+        Xn_tr, l_tr, yn_tr, Xm, Xs, ym, ys = pad_normalize(X_tr, y_tr, ml)
+        Xn_te, l_te, yn_te, _, _, _, _ = pad_normalize(X_te, y_te, ml, Xm, Xs, ym, ys)
+        
+        split_v = int(len(Xn_tr) * 0.9)
+        train_ds = RatioDataset(Xn_tr[:split_v], l_tr[:split_v], yn_tr[:split_v])
+        val_ds = RatioDataset(Xn_tr[split_v:], l_tr[split_v:], yn_tr[split_v:])
         test_ds = RatioDataset(Xn_te, l_te, yn_te)
-    else:
-        # No val set? Use time split fallback
-        split_idx = int(len(Xn_tr) * 0.9)
-        train_ds = RatioDataset(Xn_tr[:split_idx], l_tr[:split_idx], yn_tr[:split_idx])
-        val_ds = RatioDataset(Xn_tr[split_idx:], l_tr[split_idx:], yn_tr[split_idx:])
-        test_ds = RatioDataset(Xn_te, l_te, yn_te) if X_te else val_ds
+        
+        print(f'\nFold {fold_idx}: {len(train_qids)} train / {len(test_qids)} test')
+        qe_fold, _ = train(train_ds, val_ds, test_ds, ym, ys, d_in, f'Fold{fold_idx}', epochs=200)
+        all_qe.append(qe_fold)
+        print(f'  Fold {fold_idx}: P50={qe_fold[len(qe_fold)//2]:.2f}x')
 
-    print(f'[5] Training...')
-    qe, best_state = train(train_ds, val_ds, test_ds, ym, ys, d_in, 'K4+K8')
+    all_qe_flat = np.concatenate(all_qe); all_qe_flat.sort()
+    n = len(all_qe_flat)
+    print(f'\n5-fold CV results:')
+    for p in [10, 50, 90, 95, 99]:
+        print(f'  P{p}: {all_qe_flat[int(n*p/100)]:.2f}x')
+    print(f'  Mean: {np.mean(all_qe_flat):.2f}x')
 
-    # Save
-    model_path = os.path.join(DIR, 'bilstm_tabpfn.pt')
-    norm_path = os.path.join(DIR, 'bilstm_tabpfn_norm.npz')
-    torch.save(best_state, model_path)
-    np.savez(norm_path, X_mean=Xm, X_std=Xs, y_mean=ym, y_std=ys)
-    print(f'  Saved: {model_path}')
-    print(f'  Saved: {norm_path}')
-
-    n = len(qe)
-    print(f'\n{"="*55}')
-    print(f'TabPFN → BiLSTM (K4+K8, 258 queries):')
-    for pct, label in [(10, 'P10'), (50, 'P50'), (90, 'P90'), (95, 'P95'), (99, 'P99')]:
-        print(f'  {label}: {qe[min(int(n*pct/100), n-1)]:.2f}x')
-    print(f'{"="*55}')
-
-
+    main()
 if __name__ == '__main__':
     main()
